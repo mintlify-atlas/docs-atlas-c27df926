@@ -1,0 +1,196 @@
+---
+title: Contributing to ansible-cmdb
+description: Learn how to contribute to ansible-cmdb development
+---
+
+We welcome contributions to ansible-cmdb! This guide will help you get started with setting up your development environment, running tests, and submitting pull requests.
+
+## Code Guidelines
+
+When contributing code to ansible-cmdb, please keep the following in mind:
+
+- Code should be reasonably PEP8-like. We're not too strict on this.
+- One logical change per merge request.
+- By submitting a merge request or putting code in comments, you automatically grant permission to include this code in ansible-cmdb under the GPLv3 license.
+- The copyright for contributed code is retained by the contributor.
+- Please don't be disappointed if your contributions end up unused. We appreciate all contributions, but maintain strict standards for code quality and feature scope.
+
+When in doubt, just open a pull request and post a comment on what you're unclear of, and we'll figure it out.
+
+## Development Setup
+
+<Steps>
+  <Step title="Clone the repository">
+    First, clone the ansible-cmdb repository:
+    ```bash
+    git clone https://github.com/fboender/ansible-cmdb.git
+    cd ansible-cmdb
+    ```
+  </Step>
+
+  <Step title="Set up the Python environment">
+    Export the `PYTHONPATH` to run ansible-cmdb directly from the git repository:
+    ```bash
+    export PYTHONPATH="$(readlink -f lib)"
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install the required Python packages:
+    ```bash
+    pip install mako pyyaml ushlex jsonxs
+    ```
+
+    For building packages and documentation, you'll also need:
+    - git
+    - make
+    - python-markdown
+    - zip
+    - fakeroot
+    - alien
+    - Python 'wheel' package
+  </Step>
+
+  <Step title="Run ansible-cmdb from source">
+    You can now run ansible-cmdb directly from the source:
+    ```bash
+    src/ansible-cmdb
+    ```
+  </Step>
+</Steps>
+
+## Running Tests
+
+Ansible-cmdb uses [sla (the Simple Little Automator)](https://github.com/fboender/sla) for builds and tests. You don't need to have `sla` installed - you can run rules directly in your shell:
+
+```bash
+# Run tests
+. build.sla && test
+```
+
+Or with sla installed:
+
+```bash
+sla test
+```
+
+### Testing Your Changes
+
+When testing releases or your changes, here are some common test scenarios:
+
+**Testing from GitHub source:**
+
+```bash
+cd ansible-cmdb
+export PYTHONPATH=lib
+src/ansible-cmdb examples/out > ~/cmdb.html
+src/ansible-cmdb -i examples/hosts examples/out > ~/cmdb.html
+src/ansible-cmdb -p local_js=1 -i examples/hosts examples/out > ~/cmdb.html
+```
+
+**Testing after installation from source:**
+
+```bash
+cd ansible-cmdb
+sudo python ./setup.py install
+ansible-cmdb ansible-cmdb/examples/out > ~/cmdb.html
+ansible-cmdb -i ansible-cmdb/examples/hosts ansible-cmdb/examples/out > ~/cmdb.html
+```
+
+## Build System
+
+### Available Build Targets
+
+The following build targets are available:
+
+- `test` - Run tests
+- `example` - Generate example CMDB
+- `doc` - Generate documentation
+- `clean` - Remove build artifacts and other trash
+- `release_src` - Create release package (source tar.gz)
+- `release_deb` - Create release package (Debian/Ubuntu)
+- `release_wheel` - Create release package (wheel)
+- `release` - Create all release packages
+- `install` - Install ansible-cmdb
+- `uninstall` - Uninstall ansible-cmdb
+
+### Building Releases
+
+To build Debian, RedHat and source packages, you'll need a Debian-based operating system with the dependencies listed above. Build packages with:
+
+```bash
+sla release <VERSION>
+```
+
+where `VERSION` is an arbitrary version number.
+
+<Warning>
+Your repository must be completely clean to build releases: everything must be committed and there must be no untracked files. To temporarily stash untracked changes:
+
+```bash
+git stash -u
+```
+</Warning>
+
+## Submitting Pull Requests
+
+<Steps>
+  <Step title="Fork and create a branch">
+    Fork the repository and create a new branch for your changes:
+    ```bash
+    git checkout -b my-feature-branch
+    ```
+  </Step>
+
+  <Step title="Make your changes">
+    Implement your feature or bug fix following the code guidelines above.
+  </Step>
+
+  <Step title="Test your changes">
+    Run the test suite to ensure everything works:
+    ```bash
+    . build.sla && test
+    ```
+  </Step>
+
+  <Step title="Commit your changes">
+    Commit your changes with a clear, descriptive commit message:
+    ```bash
+    git add .
+    git commit -m "Add feature: description of your changes"
+    ```
+  </Step>
+
+  <Step title="Push and create a pull request">
+    Push your changes to your fork and create a pull request on the [main repository](https://github.com/fboender/ansible-cmdb):
+    ```bash
+    git push origin my-feature-branch
+    ```
+  </Step>
+</Steps>
+
+## Reporting Bugs and Feature Requests
+
+When reporting bugs:
+
+- Provide output of `ansible-cmdb --debug`
+- Reduce your facts (delete some of the `ansible -m setup` output files) until you're left with a single fact file that still reproduces the problem
+- If possible, attach the problematic fact file
+
+For feature requests:
+
+<Note>
+Please do not file feature requests for column additions. Every user has different requirements and adding endless variety of columns is impractical. You can easily add [custom columns](https://ansible-cmdb.readthedocs.io/en/latest/usage/#custom-columns) yourself. Pull requests are welcome if you believe the columns are useful for a wide audience.
+</Note>
+
+## License
+
+Ansible-cmdb is licensed under the GPLv3. By contributing, you agree that your contributions will be licensed under the same license.
+
+## Getting Help
+
+If you have questions about contributing, please:
+
+- Check the [full documentation](https://ansible-cmdb.readthedocs.io/en/latest/)
+- Open an issue on [GitHub](https://github.com/fboender/ansible-cmdb/issues)
+- Review existing pull requests to see how others have contributed

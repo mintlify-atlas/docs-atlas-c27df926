@@ -1,0 +1,285 @@
+---
+title: Template Reference
+description: Complete reference of all available ansible-cmdb templates and their options
+---
+
+ansible-cmdb uses templates to generate different output formats. Templates are stored as `.tpl` files and Python scripts in the `src/ansiblecmdb/data/tpl/` directory.
+
+## Available Templates
+
+The following templates are available in ansible-cmdb:
+
+<CardGroup cols={2}>
+  <Card title="csv.tpl" icon="file-csv">
+    CSV spreadsheet output format
+  </Card>
+  
+  <Card title="html_fancy.tpl" icon="browser">
+    Main fancy HTML template with DataTables integration
+  </Card>
+  
+  <Card title="html_fancy_split.py" icon="layer-group">
+    Split HTML generator (Python script)
+  </Card>
+  
+  <Card title="json.tpl" icon="brackets-curly">
+    JSON export template
+  </Card>
+  
+  <Card title="markdown.tpl" icon="markdown">
+    Markdown output template
+  </Card>
+  
+  <Card title="markdown_split.py" icon="markdown">
+    Split Markdown generator (Python script)
+  </Card>
+  
+  <Card title="sql.tpl" icon="database">
+    SQL database export template
+  </Card>
+  
+  <Card title="txt_table.tpl" icon="table">
+    Plain text table template
+  </Card>
+</CardGroup>
+
+## Template Files
+
+The template system consists of several types of files:
+
+### Template Files (.tpl)
+
+Mako template files that generate output:
+
+- `csv.tpl` - CSV output
+- `html_fancy.tpl` - Main HTML template
+- `json.tpl` - JSON output
+- `markdown.tpl` - Markdown output
+- `sql.tpl` - SQL output
+- `txt_table.tpl` - Text table output
+
+### Python Scripts (.py)
+
+Python generators for complex multi-file output:
+
+- `html_fancy_split.py` - Generates split HTML output
+- `markdown_split.py` - Generates split Markdown output
+
+### Split Template Components
+
+Templates used by split generators:
+
+- `html_fancy_split_overview.tpl` - Overview page for HTML split
+- `html_fancy_split_detail.tpl` - Detail pages for HTML split
+- `markdown_split_overview.tpl` - Overview page for Markdown split
+- `markdown_split_detail.tpl` - Detail pages for Markdown split
+
+### Shared Definitions
+
+- `html_fancy_defs.html` - Column definitions and helper functions used by HTML templates
+
+## HTML Templates
+
+### html_fancy.tpl
+
+**Type**: Single-file template  
+**Output**: One HTML file with all hosts
+
+The main fancy HTML template that creates an interactive, searchable, sortable table of hosts using jQuery and DataTables.
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `local_js` | 0\|1 | 0 | Load JavaScript resources from local disk instead of CDN |
+| `collapsed` | 0\|1 | 0 | Collapse host information by default |
+| `host_details` | 0\|1 | 1 | Render host details section |
+| `skip_empty` | 0\|1 | 0 | Skip hosts with no gathered facts (unreachable hosts) |
+
+#### Example
+
+```bash
+ansible-cmdb -t html_fancy -p local_js=1 -p collapsed=1 -i hosts out/ > overview.html
+```
+
+### html_fancy_split.py
+
+**Type**: Multi-file generator  
+**Output**: Directory with index.html and separate host detail files
+
+Generates a split HTML output with a main overview page and individual HTML files for each host. Better performance for large inventories.
+
+#### Parameters
+
+Accepts the same parameters as `html_fancy.tpl`:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `local_js` | 0\|1 | 0 | Load JavaScript resources from local disk |
+| `collapsed` | 0\|1 | 0 | Collapse host information by default |
+| `host_details` | 0\|1 | 1 | Render host details section |
+| `skip_empty` | 0\|1 | 0 | Skip hosts with no gathered facts |
+
+#### Example
+
+```bash
+ansible-cmdb -t html_fancy_split -i hosts out/
+```
+
+#### Output Structure
+
+```
+cmdb/
+├── index.html              # Overview page with host table
+├── hostname1.html          # Detail page for hostname1
+├── hostname2.html          # Detail page for hostname2
+└── ...
+```
+
+## Text Templates
+
+### txt_table.tpl
+
+**Type**: Single-file template  
+**Output**: Plain text table
+
+Generates a simple text table suitable for terminal display.
+
+#### Column Support
+
+Supports the `--columns` flag to customize displayed columns. See [Column Reference](/reference/column-reference).
+
+#### Example
+
+```bash
+ansible-cmdb -t txt_table --columns name,os,ip,mem,cpus facts/
+```
+
+## Data Export Templates
+
+### json.tpl
+
+**Type**: Single-file template  
+**Output**: JSON file
+
+Exports all host information in JSON format including facts, groups, variables, and custom data.
+
+#### Example
+
+```bash
+ansible-cmdb -t json -i hosts out/ > cmdb.json
+```
+
+### csv.tpl
+
+**Type**: Single-file template  
+**Output**: CSV file
+
+Exports host information in CSV format for spreadsheet applications.
+
+#### Example
+
+```bash
+ansible-cmdb -t csv -i hosts out/ > hosts.csv
+```
+
+### sql.tpl
+
+**Type**: Single-file template  
+**Output**: SQL file
+
+Generates SQL statements to create and populate database tables with host information.
+
+#### Parameters
+
+No template-specific parameters.
+
+#### Example
+
+```bash
+ansible-cmdb -t sql -i hosts out/ > cmdb.sql
+
+# Load into MySQL
+echo "CREATE DATABASE ansiblecmdb" | mysql
+mysql ansiblecmdb < cmdb.sql
+
+# Or SQLite
+sqlite3 cmdb.db < cmdb.sql
+```
+
+## Markdown Templates
+
+### markdown.tpl
+
+**Type**: Single-file template  
+**Output**: Markdown file
+
+Generates host documentation in Markdown format.
+
+#### Example
+
+```bash
+ansible-cmdb -t markdown -i hosts out/ > hosts.md
+```
+
+### markdown_split.py
+
+**Type**: Multi-file generator  
+**Output**: Directory with index.md and separate host detail files
+
+Generates split Markdown output similar to html_fancy_split.
+
+#### Example
+
+```bash
+ansible-cmdb -t markdown_split -i hosts out/
+```
+
+#### Output Structure
+
+```
+out/
+├── index.md                # Overview page
+├── hostname1.md            # Detail page for hostname1
+├── hostname2.md            # Detail page for hostname2
+└── ...
+```
+
+## Template Definitions
+
+### html_fancy_defs.html
+
+This file contains shared definitions used by HTML templates:
+
+- **Column definitions**: Defines all available columns for the host overview table
+- **Helper functions**: Functions for rendering data structures (lists, dicts)
+- **HTML fragments**: Reusable HTML components (header, footer, etc.)
+- **JavaScript fragments**: DataTables initialization and event handlers
+- **Column functions**: Functions to extract and format data for each column
+
+See [Column Reference](/reference/column-reference) for details on available columns.
+
+## Using Template Parameters
+
+Template parameters are passed using the `-p` or `--params` flag:
+
+```bash
+ansible-cmdb -t template_name -p param1=value1 -p param2=value2 ...
+```
+
+### Multiple Parameters
+
+```bash
+ansible-cmdb -t html_fancy -p local_js=1 -p collapsed=1 -p skip_empty=1 -i hosts out/ > overview.html
+```
+
+## Custom Templates
+
+You can create custom templates by:
+
+1. Creating a new `.tpl` file in the template directory
+2. Using Mako template syntax
+3. Accessing host data via the `hosts` dictionary
+4. Using helper functions from `html_fancy_defs.html` (for HTML templates)
+
+Refer to existing templates as examples for custom template development.

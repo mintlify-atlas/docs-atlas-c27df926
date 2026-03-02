@@ -1,0 +1,268 @@
+---
+title: Custom Columns
+description: Add custom columns to host overviews with jsonxs expressions and Mako templates
+---
+
+Custom columns allow you to display additional host information in the overview table by extracting data from Ansible facts using jsonxs expressions or Mako templates.
+
+<Info>
+Custom columns are currently only supported by the `html_fancy` and `html_fancy_split` templates.
+</Info>
+
+## Overview
+
+The `-C` (`--cust-cols`) option takes a path to a Python file containing custom column definitions. Each column can use either:
+
+- **jsonxs expressions**: Simple path-based fact lookups
+- **Mako templates**: Advanced rendering with full Python logic
+
+## Column Definition Structure
+
+Custom column files use Python syntax with a list of dictionaries:
+
+```python
+[
+    {
+        "title": "Column Title",
+        "id": "unique_id",
+        "sType": "string",
+        "visible": True,
+        "jsonxs": "ansible_facts.some_fact"
+    }
+]
+```
+
+### Required Fields
+
+| Field | Description | Values |
+|-------|-------------|--------|
+| `title` | User-friendly column header | Any string |
+| `id` | Unique column identifier | Lowercase, underscores |
+| `sType` | How values are sorted | `"string"` or `"num"` |
+| `visible` | Show by default | `True` or `False` |
+
+### Content Fields (one required)
+
+| Field | Description |
+|-------|-------------|
+| `jsonxs` | Path to fact value (e.g., `ansible_facts.ansible_apparmor.status`) |
+| `tpl` | Mako template fragment with access to `host` variable |
+
+## Using jsonxs Expressions
+
+jsonxs provides simple dot-notation access to nested fact data:
+
+```python
+[
+    # Show whether AppArmor is enabled
+    {
+        "title": "AppArmor",
+        "id": "apparmor",
+        "sType": "string",
+        "visible": False,
+        "jsonxs": "ansible_facts.ansible_apparmor.status"
+    }
+]
+```
+
+### Finding jsonxs Paths
+
+<Steps>
+  <Step title="Locate a fact file">
+    Open any gathered fact file from your `out/` directory in a JSON editor
+  </Step>
+  
+  <Step title="Navigate to the value">
+    Find the data you want to display in the nested structure
+  </Step>
+  
+  <Step title="Build the path">
+    Join the keys with dots: `ansible_facts.ansible_dns.nameservers`
+  </Step>
+</Steps>
+
+## Using Mako Templates
+
+Mako templates provide full Python logic for complex rendering:
+
+```python
+[
+    # Show the nameservers configured on the host
+    {
+        "title": "Nameservers",
+        "id": "nameservers",
+        "sType": "string",
+        "visible": True,
+        "tpl": """
+          <ul>
+            <%
+            # Get ansible_facts.ansible_dns.nameservers
+            facts = host.get('ansible_facts', {})
+            dns = facts.get('ansible_dns', {})
+            nameservers = dns.get('nameservers', [])
+            %>
+            % for nameserver in nameservers:
+              <li>${nameserver}</li>
+            % endfor
+          </ul>
+        """
+    }
+]
+```
+
+### Template Variables
+
+| Variable | Description |
+|----------|-------------|
+| `host` | Complete host dictionary with all facts |
+| `jsonxs` | Function for safe fact access |
+
+### Safe Data Access
+
+<Warning>
+Always use `.get()` with defaults or the `jsonxs()` function. If any host is missing the data you're accessing, ansible-cmdb will crash with a KeyError.
+</Warning>
+
+<CodeGroup>
+```python Unsafe (will crash)
+facts = host['ansible_facts']
+nameservers = facts['ansible_dns']['nameservers']
+```
+
+```python Safe with .get()
+facts = host.get('ansible_facts', {})
+dns = facts.get('ansible_dns', {})
+nameservers = dns.get('nameservers', [])
+```
+
+```python Safe with jsonxs (recommended)
+nameservers = jsonxs(host, 'ansible_facts.ansible_dns.nameservers', default=[])
+```
+</CodeGroup>
+
+## Complete Example
+
+Here's a real example from the ansible-cmdb repository:
+
+```python example/cust_cols.conf
+[
+    # Show whether AppArmor is enabled
+    {
+        "title": "AppArmor",
+        "id": "apparmor",
+        "sType": "string",
+        "visible": False,
+        "jsonxs": "ansible_facts.ansible_apparmor.status"
+    },
+    # Show the nameservers configured on the host
+    {
+        "title": "Nameservers",
+        "id": "nameservers",
+        "sType": "string",
+        "visible": True,
+        "tpl": """
+          <ul>
+            <%
+            # Get ansible_facts.ansible_dns.nameservers
+            facts = host.get('ansible_facts', {})
+            dns = facts.get('ansible_dns', {})
+            nameservers = dns.get('nameservers', [])
+            %>
+            % for nameserver in nameservers:
+              <li>${nameserver}</li>
+            % endfor
+          </ul>
+        """
+    },
+    # Show the nameservers configured on the host, but use jsonxs.
+    {
+        "title": "Nameservers2",
+        "id": "nameservers2",
+        "sType": "string",
+        "visible": True,
+        "tpl": """
+          <ul>
+            <%
+            # Get ansible_facts.ansible_dns.nameservers using jsonxs
+            nameservers = jsonxs(host, 'ansible_facts.ansible_dns.nameservers', default=[])
+            %>
+            % for nameserver in nameservers:
+              <li>${nameserver}</li>
+            % endfor
+          </ul>
+        """
+    }
+]
+```
+
+## Advanced: Sortable Columns
+
+### Numeric Sorting
+
+<Warning>
+For `"sType": "num"` columns, any non-numeric characters will break sorting.
+</Warning>
+
+### String Sorting with Hidden Values
+
+For human-friendly display with proper sorting, use hidden sort helpers:
+
+```python
+{
+    "title": "Uptime",
+    "id": "uptime",
+    "sType": "string",
+    "visible": False,
+    "tpl": """
+      <%
+      def ConvertSectoDay(n):
+          weeks = n // (7 * 24 * 3600 )
+          n = n % (7 * 24 * 3600)
+          days = n // (24 * 3600)
+          n = n % (24 * 3600)
+          hours = n // 3600
+          n %= 3600
+          minutes = n // 60
+          n %= 60
+          seconds = n
+
+          return("%d Weeks, %d Days, %d Hours, %d Minutes, %d Seconds" % (weeks, days, hours, minutes, seconds))
+
+      num_uptime = int(jsonxs(host, 'ansible_facts.ansible_uptime_seconds', default=0))
+      sort_uptime = "{0:012d}".format(num_uptime)
+      uptime = ConvertSectoDay(int(jsonxs(host, 'ansible_facts.ansible_uptime_seconds', default=0)))
+      %>
+      ## hidden sort helper
+      <span style="display:none">${sort_uptime}</span>
+      <span>${uptime}</span>
+    """
+}
+```
+
+<Info>
+String sorting considers "100" smaller than "20" since "1" < "2". Use zero-padding or map values to a 0.0-1.0 range for correct sorting.
+</Info>
+
+## Usage
+
+Apply your custom columns file:
+
+```bash
+ansible-cmdb -C example/cust_cols.conf -i hosts out/ > cmdb.html
+```
+
+<Accordion title="Troubleshooting: New columns don't appear">
+If new columns don't show up or you experience strange behavior:
+
+1. Open the generated HTML in your browser
+2. Click the **Clear settings** button in the top-right
+3. Refresh the page
+
+This clears localStorage settings that may be caching old column configurations.
+</Accordion>
+
+## See Also
+
+- [Template Parameters](/advanced/parameters) - Configure template behavior
+- [Custom Templates](/advanced/custom-templates) - Build entirely custom output formats
+- [jsonxs documentation](https://github.com/fboender/jsonxs) - Learn more about jsonxs expressions

@@ -1,0 +1,319 @@
+---
+title: Inventory Scanning
+description: Reading Ansible inventory files to enhance host information
+---
+
+## Overview
+
+Ansible-cmdb can read your Ansible inventory files and extract valuable information to enhance the generated CMDB:
+
+- Host group memberships
+- Host variables (custom key/value pairs)
+- Group variables from `host_vars/` and `group_vars/` directories
+
+## Basic Usage
+
+Use the `-i` or `--inventory` option to specify your inventory:
+
+```bash
+ansible-cmdb -i ./hosts out/ > overview.html
+```
+
+## Inventory Types
+
+Ansible-cmdb supports all Ansible inventory types:
+
+<Tabs>
+  <Tab title="Single File">
+    Point to a single hosts file:
+    
+    ```bash
+    ansible-cmdb -i ./hosts out/ > overview.html
+    ```
+  </Tab>
+  
+  <Tab title="Directory">
+    Point to a directory containing multiple inventory files:
+    
+    ```bash
+    ansible-cmdb -i ./inventory/ out/ > overview.html
+    ```
+  </Tab>
+  
+  <Tab title="Dynamic Inventory">
+    Point to a dynamic inventory script:
+    
+    ```bash
+    ansible-cmdb -i ./ec2.py out/ > overview.html
+    ```
+  </Tab>
+  
+  <Tab title="Multiple Inventories">
+    Specify multiple inventories separated by commas (no spaces):
+    
+    ```bash
+    ansible-cmdb -i ./hosts,./hosts.aws,./hosts.gcp out/ > overview.html
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  When specifying multiple inventories, separate them with commas **without spaces**:
+  - Correct: `-i hosts1,hosts2,hosts3`
+  - Wrong: `-i hosts1, hosts2, hosts3`
+</Warning>
+
+## Host and Group Variables
+
+When you point ansible-cmdb to your inventory with `-i`, it automatically includes variables from:
+
+- `host_vars/` directory (if found in the same location)
+- `group_vars/` directory (if found in the same location)
+- Inline host variables in the inventory file
+
+### Directory Structure
+
+```
+.
+├── hosts                  # Inventory file
+├── host_vars/
+│   ├── web1.example.com
+│   └── db1.example.com
+└── group_vars/
+    ├── webservers
+    └── databases
+```
+
+When you run:
+
+```bash
+ansible-cmdb -i ./hosts out/ > overview.html
+```
+
+Ansible-cmdb automatically includes `host_vars/` and `group_vars/` data.
+
+## Special Variables
+
+The `html_fancy` and `html_fancy_split` templates recognize four special host variables:
+
+<ParamField path="groups" type="array">
+  List of Ansible groups the host belongs to. Displayed in the host overview table.
+  
+  ```ini
+  [webservers]
+  web1.example.com
+  
+  [databases]
+  db1.example.com
+  ```
+</ParamField>
+
+<ParamField path="dtap" type="string">
+  Environment type: `dev`, `test`, `acc`, or `prod`. Displayed in the host overview table.
+  
+  ```ini
+  web1.dev.example.com   dtap=dev
+  web1.test.example.com  dtap=test
+  web1.acc.example.com   dtap=acc
+  web1.example.com       dtap=prod
+  ```
+</ParamField>
+
+<ParamField path="comment" type="string">
+  Free-form comment about the host. Displayed in the host overview table.
+  
+  ```ini
+  web1.example.com  comment="Primary web server - 24/7 support"
+  ```
+</ParamField>
+
+<ParamField path="ext_id" type="string">
+  External unique identifier for the host (e.g., asset ID, ticket number). Displayed in the host overview table.
+  
+  ```ini
+  web1.example.com  ext_id="SRV_10029"
+  ```
+</ParamField>
+
+## Example Inventory
+
+Here's a complete example showing all features:
+
+```ini
+[cust.megacorp]
+db1.dev.megacorp.com   dtap=dev  comment="Old database server"
+db2.dev.megacorp.com   dtap=dev  comment="New database server"
+test.megacorp.com      dtap=test
+acc.megacorp.com       dtap=acc  comment="24/7 support"
+megacorp.com           dtap=prod comment="Hosting by Foo" ext_id="SRV_10029"
+
+[os.redhat]
+megacorp.com
+acc.megacorp.com
+test.megacorp.com
+db2.dev.megacorp.com
+
+[os.debian]
+db1.dev.megacorp.com
+```
+
+### Resulting Host Information
+
+Based on the above inventory:
+
+**acc.megacorp.com:**
+- Groups: `cust.megacorp`, `os.redhat`
+- DTAP: `acc`
+- Comment: "24/7 support"
+
+**megacorp.com:**
+- Groups: `cust.megacorp`, `os.redhat`
+- DTAP: `prod`
+- Comment: "Hosting by Foo"
+- External ID: "SRV_10029"
+
+## Custom Variables
+
+All host variables are available in templates under the `hostvars` section. In the `html_fancy` template, custom variables appear under the "Custom variables" heading.
+
+### Example with host_vars
+
+**hosts file:**
+```ini
+[webservers]
+web1.example.com
+```
+
+**host_vars/web1.example.com:**
+```yaml
+app_version: "2.1.4"
+backup_schedule: "daily"
+maintenance_window: "Sunday 2-4 AM"
+```
+
+These variables will be displayed in the generated CMDB output.
+
+## Variable Visibility
+
+<Note>
+  Whether variables are included in the output depends on the template used:
+  - `html_fancy` / `html_fancy_split`: Shows variables under "Custom variables"
+  - `json`: Includes all variables in the output
+  - `txt_table`: Limited variable display
+  - `csv`: Selected variables only
+</Note>
+
+## Use Cases
+
+<Tabs>
+  <Tab title="Environment Tracking">
+    Use `dtap` to identify which environment each host belongs to:
+    
+    ```ini
+    [all:vars]
+    company=megacorp
+    
+    [development]
+    dev1.example.com  dtap=dev
+    dev2.example.com  dtap=dev
+    
+    [production]
+    web1.example.com  dtap=prod
+    db1.example.com   dtap=prod
+    ```
+  </Tab>
+  
+  <Tab title="Asset Management">
+    Use `ext_id` to link hosts to your asset management system:
+    
+    ```ini
+    web1.example.com  ext_id="ASSET-1001"  comment="Primary web"
+    db1.example.com   ext_id="ASSET-1002"  comment="Primary DB"
+    ```
+  </Tab>
+  
+  <Tab title="Documentation">
+    Use `comment` to add operational notes:
+    
+    ```ini
+    legacy.example.com  comment="Do not upgrade - runs legacy app"
+    critical.example.com comment="24/7 monitoring - page on failure"
+    ```
+  </Tab>
+  
+  <Tab title="Grouping">
+    Organize hosts by function, location, or any criteria:
+    
+    ```ini
+    [location.us-east]
+    web1.example.com
+    db1.example.com
+    
+    [location.eu-west]
+    web2.example.com
+    db2.example.com
+    
+    [function.web]
+    web1.example.com
+    web2.example.com
+    
+    [function.database]
+    db1.example.com
+    db2.example.com
+    ```
+  </Tab>
+</Tabs>
+
+## Combining with Limiting
+
+Inventory scanning is required when using the `--limit` option to filter hosts:
+
+```bash
+# Show only production hosts
+ansible-cmdb -i hosts -l 'production' out/ > prod_cmdb.html
+
+# Show webservers and databases, but not development
+ansible-cmdb -i hosts -l 'webservers:databases:!development' out/ > cmdb.html
+```
+
+See [Limiting Hosts](/usage/limiting-hosts) for more information.
+
+## Best Practices
+
+<Tip>
+  1. **Always use `-i`** when you have inventory files - it significantly enriches the CMDB data
+  2. **Standardize variables** - use consistent naming for `dtap`, `comment`, and `ext_id`
+  3. **Leverage group_vars** - put common variables in `group_vars/` instead of repeating them
+  4. **Document in comments** - use the `comment` field for operational notes
+  5. **Track environments** - use `dtap` consistently across all hosts
+</Tip>
+
+## Troubleshooting
+
+### host_vars and group_vars not loaded
+
+Ensure the directories exist in the same location as your inventory file:
+
+```bash
+ls -la
+# Should show:
+# hosts
+# host_vars/
+# group_vars/
+```
+
+### Variables not appearing in output
+
+Check that you're using a template that displays variables:
+- `html_fancy` - Shows under "Custom variables"
+- `json` - Includes all variables
+- `txt_table` - Limited support
+
+### Dynamic inventory not working
+
+Ensure the script is executable:
+
+```bash
+chmod +x inventory_script.py
+ansible-cmdb -i ./inventory_script.py out/ > overview.html
+```

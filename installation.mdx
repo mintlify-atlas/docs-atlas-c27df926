@@ -1,0 +1,254 @@
+---
+title: Installation
+description: Install ansible-cmdb on your system
+---
+
+# Installation
+
+Ansible-cmdb can be installed using pip, distribution packages, Homebrew, or from source. Choose the method that works best for your system.
+
+## Requirements
+
+Ansible-cmdb requires **Python v2.7+ or Python 3.0+**.
+
+<Info>
+In theory, ansible-cmdb should work on any system that can run Python, including BSD, Linux, Windows, Solaris, and macOS. In practice, it is developed on Ubuntu 16.04 and tested on the latest stable versions of Debian, Ubuntu, and CentOS.
+</Info>
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="Pip">
+    ### Install via Pip
+
+    The recommended installation method for most users is pip, the Python package manager.
+
+    <Steps>
+      <Step title="Install pip">
+        If you don't have pip installed yet, install it for your distribution:
+
+        ```bash
+        # Debian/Ubuntu
+        sudo apt-get install python3-pip
+
+        # RedHat/CentOS
+        sudo yum install python3-pip
+
+        # Fedora
+        sudo dnf install python3-pip
+        ```
+      </Step>
+
+      <Step title="Install ansible-cmdb">
+        Install ansible-cmdb using pip:
+
+        ```bash
+        sudo pip install ansible-cmdb
+        ```
+      </Step>
+
+      <Step title="Verify installation">
+        Verify the installation:
+
+        ```bash
+        ansible-cmdb --version
+        ```
+      </Step>
+    </Steps>
+
+    ### Upgrade via Pip
+
+    To upgrade to the latest version:
+
+    ```bash
+    sudo pip install --upgrade ansible-cmdb
+    ```
+
+    <Tip>
+    Using pip ensures you always have access to the latest version and makes upgrading simple.
+    </Tip>
+  </Tab>
+
+  <Tab title="Debian/Ubuntu">
+    ### Debian/Ubuntu Package
+
+    Download the `.deb` package for your distribution from the [GitHub Releases page](https://github.com/fboender/ansible-cmdb/releases).
+
+    <Steps>
+      <Step title="Download package">
+        Download the latest `.deb` package:
+
+        ```bash
+        wget https://github.com/fboender/ansible-cmdb/releases/download/VERSION/ansible-cmdb_VERSION_all.deb
+        ```
+
+        Replace `VERSION` with the desired version number.
+      </Step>
+
+      <Step title="Install package">
+        Install the package:
+
+        ```bash
+        sudo dpkg -i ansible-cmdb*.deb
+        ```
+      </Step>
+
+      <Step title="Install dependencies">
+        If there are dependency issues, run:
+
+        ```bash
+        sudo apt-get install -f
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+    Support for RPM and other package managers has been dropped. Please use the pip method instead for non-Debian distributions.
+    </Warning>
+  </Tab>
+
+  <Tab title="macOS">
+    ### macOS (Homebrew)
+
+    On macOS, the easiest installation method is using Homebrew:
+
+    <Steps>
+      <Step title="Install Homebrew">
+        If you don't have Homebrew installed:
+
+        ```bash
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        ```
+      </Step>
+
+      <Step title="Install ansible-cmdb">
+        Install ansible-cmdb:
+
+        ```bash
+        brew install ansible-cmdb
+        ```
+      </Step>
+
+      <Step title="Verify installation">
+        Verify the installation:
+
+        ```bash
+        ansible-cmdb --version
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Source">
+    ### Install from Source
+
+    For other systems or if you want to install from source:
+
+    <Steps>
+      <Step title="Download source">
+        Download and extract the source tarball:
+
+        ```bash
+        wget https://github.com/fboender/ansible-cmdb/releases/download/VERSION/ansible-cmdb-VERSION.tar.gz
+        tar -vxzf ansible-cmdb*.tar.gz
+        cd ansible-cmdb*
+        ```
+      </Step>
+
+      <Step title="Install">
+        Install using make:
+
+        ```bash
+        sudo make install
+        ```
+      </Step>
+    </Steps>
+
+    ### Install from Git Repository
+
+    To install the latest development version from Git:
+
+    <Steps>
+      <Step title="Clone repository">
+        Clone the repository:
+
+        ```bash
+        git clone https://github.com/fboender/ansible-cmdb.git
+        cd ansible-cmdb
+        ```
+      </Step>
+
+      <Step title="Install">
+        Install using the build script:
+
+        ```bash
+        sudo bash -c ". build.sla && install"
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+    Installing from Git gives you the latest development version, which may be unstable. For production use, install from a release.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Dependencies
+
+Ansible-cmdb has the following Python dependencies (automatically installed when using pip):
+
+- **mako** - Template engine
+- **pyyaml** - YAML parser
+- **ushlex** - Shell-like lexer
+- **jsonxs** - JSONPath expressions
+
+<Note>
+When installing via pip, all dependencies are installed automatically. When installing from source or distribution packages, you may need to install these dependencies manually.
+</Note>
+
+## Verifying Installation
+
+After installation, verify that ansible-cmdb is working correctly:
+
+```bash
+ansible-cmdb --version
+```
+
+You should see output similar to:
+
+```
+ansible-cmdb v1.31
+```
+
+<Tip>
+If the `ansible-cmdb` command is not found, check that the installation directory is in your PATH. The default installation locations are:
+- Pip: `/usr/local/bin/ansible-cmdb`
+- Debian/Ubuntu: `/usr/bin/ansible-cmdb`
+- Homebrew: `/usr/local/bin/ansible-cmdb`
+</Tip>
+
+## Troubleshooting
+
+### Python Interpreter Issues
+
+If you encounter issues with the Python interpreter, you can manually specify the Python binary and script path:
+
+```bash
+/opt/python3/bin/python /opt/ansible-cmdb/src/ansible-cmdb.py out/ > overview.html
+```
+
+### Permission Denied
+
+If you get permission errors, ensure you're using `sudo` for system-wide installation, or use a virtual environment:
+
+```bash
+python3 -m venv ansible-cmdb-env
+source ansible-cmdb-env/bin/activate
+pip install ansible-cmdb
+```
+
+## Next Steps
+
+<Card title="Quick Start" icon="rocket" href="/quickstart">
+  Learn how to generate your first host overview with a working example
+</Card>

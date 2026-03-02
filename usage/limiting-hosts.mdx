@@ -1,0 +1,376 @@
+---
+title: Limiting Hosts
+description: Filter which hosts are included in the CMDB output
+---
+
+## Overview
+
+The `-l` or `--limit` option allows you to filter which hosts appear in the generated CMDB output. This works similarly to Ansible's built-in limit functionality.
+
+<Note>
+  Host limiting requires the `-i` option to point to your inventory file. Without an inventory, ansible-cmdb cannot determine group memberships.
+</Note>
+
+## Basic Usage
+
+```bash
+ansible-cmdb -i hosts -l 'pattern' out/ > cmdb.html
+```
+
+## Pattern Syntax
+
+Ansible-cmdb supports the following pattern types:
+
+<ParamField path="all" type="keyword">
+  Include all hosts in the inventory.
+  
+  ```bash
+  ansible-cmdb -i hosts -l 'all' out/ > cmdb.html
+  ```
+</ParamField>
+
+<ParamField path="hostname" type="string">
+  Include a specific host by its exact name.
+  
+  ```bash
+  ansible-cmdb -i hosts -l 'web1.example.com' out/ > cmdb.html
+  ```
+</ParamField>
+
+<ParamField path="groupname" type="string">
+  Include all hosts in a specific group.
+  
+  ```bash
+  ansible-cmdb -i hosts -l 'webservers' out/ > cmdb.html
+  ```
+</ParamField>
+
+<ParamField path="!pattern" type="string">
+  Exclude hosts matching the pattern (inversion).
+  
+  ```bash
+  ansible-cmdb -i hosts -l '!development' out/ > cmdb.html
+  ```
+</ParamField>
+
+<ParamField path="pattern1:pattern2" type="string">
+  Combine multiple patterns with colon (`:`) separator.
+  
+  ```bash
+  ansible-cmdb -i hosts -l 'webservers:databases' out/ > cmdb.html
+  ```
+</ParamField>
+
+## Examples
+
+### Single Group
+
+Include only hosts in the `webservers` group:
+
+```bash
+ansible-cmdb -i hosts -l 'webservers' out/ > webservers_cmdb.html
+```
+
+### Specific Host
+
+Generate CMDB for a single host:
+
+```bash
+ansible-cmdb -i hosts -l 'db1.example.com' out/ > db1_cmdb.html
+```
+
+### Multiple Groups
+
+Include hosts from multiple groups:
+
+```bash
+ansible-cmdb -i hosts -l 'webservers:databases' out/ > web_and_db_cmdb.html
+```
+
+### Exclude Group
+
+Include all hosts except those in a specific group:
+
+```bash
+ansible-cmdb -i hosts -l 'all:!development' out/ > production_cmdb.html
+```
+
+### Complex Pattern
+
+Combine inclusion and exclusion:
+
+```bash
+# Include all hosts in cust.acme, exclude the group itself, but add back foo.example.com
+ansible-cmdb -i hosts -l 'all:!cust.acme:foo.example.com' out/ > cmdb.html
+```
+
+## Real-World Use Cases
+
+<Tabs>
+  <Tab title="Environment Separation">
+    Generate separate CMDBs for each environment:
+    
+    ```bash
+    # Development CMDB
+    ansible-cmdb -i hosts -l 'development' out/ > dev_cmdb.html
+    
+    # Production CMDB
+    ansible-cmdb -i hosts -l 'production' out/ > prod_cmdb.html
+    
+    # Non-production (test + dev)
+    ansible-cmdb -i hosts -l 'development:testing' out/ > nonprod_cmdb.html
+    ```
+  </Tab>
+  
+  <Tab title="Customer Segregation">
+    Generate CMDBs per customer:
+    
+    ```bash
+    # Single customer
+    ansible-cmdb -i hosts -l 'cust.acme' out/ > acme_cmdb.html
+    
+    # All customers except one
+    ansible-cmdb -i hosts -l 'all:!cust.internal' out/ > external_cmdb.html
+    ```
+  </Tab>
+  
+  <Tab title="Function-Based">
+    Generate CMDBs by infrastructure function:
+    
+    ```bash
+    # Web tier only
+    ansible-cmdb -i hosts -l 'webservers' out/ > web_tier.html
+    
+    # Database tier only
+    ansible-cmdb -i hosts -l 'databases' out/ > db_tier.html
+    
+    # Application stack (web + app + db)
+    ansible-cmdb -i hosts -l 'webservers:appservers:databases' out/ > app_stack.html
+    ```
+  </Tab>
+  
+  <Tab title="Compliance Reporting">
+    Generate compliance-specific reports:
+    
+    ```bash
+    # PCI-compliant hosts only
+    ansible-cmdb -i hosts -l 'pci_scope' out/ > pci_cmdb.html
+    
+    # Everything except PCI
+    ansible-cmdb -i hosts -l 'all:!pci_scope' out/ > non_pci_cmdb.html
+    ```
+  </Tab>
+</Tabs>
+
+## Sample Inventory
+
+To illustrate limiting, here's a sample inventory structure:
+
+```ini
+[development]
+dev1.example.com
+dev2.example.com
+
+[testing]
+test1.example.com
+test2.example.com
+
+[production]
+web1.example.com
+web2.example.com
+db1.example.com
+
+[webservers]
+web1.example.com
+web2.example.com
+dev1.example.com
+
+[databases]
+db1.example.com
+
+[cust.acme]
+web1.example.com
+db1.example.com
+
+[cust.internal]
+dev1.example.com
+dev2.example.com
+test1.example.com
+test2.example.com
+```
+
+## Example Limit Patterns
+
+Using the inventory above:
+
+<CodeGroup>
+```bash Production only
+ansible-cmdb -i hosts -l 'production' out/ > cmdb.html
+# Includes: web1, web2, db1
+```
+
+```bash Production webservers
+ansible-cmdb -i hosts -l 'production:webservers' out/ > cmdb.html
+# Includes: web1, web2, db1, dev1
+# (union of both groups)
+```
+
+```bash Everything except development
+ansible-cmdb -i hosts -l 'all:!development' out/ > cmdb.html
+# Includes: test1, test2, web1, web2, db1
+# Excludes: dev1, dev2
+```
+
+```bash Specific customer with exception
+ansible-cmdb -i hosts -l 'cust.acme:!db1.example.com' out/ > cmdb.html
+# Includes: web1
+# Excludes: db1
+```
+</CodeGroup>
+
+## Limitations
+
+<Warning>
+  Current limitations of the `--limit` option:
+  
+  - **No wildcards**: Patterns like `db*.example.com` are not supported
+  - **No host expansions**: Patterns like `db[0-3].example.com` are not supported
+  - **Requires inventory**: The `-i` option must be specified for limiting to work
+</Warning>
+
+### Unsupported Patterns
+
+```bash
+# These do NOT work:
+ansible-cmdb -i hosts -l 'web*.example.com' out/ > cmdb.html  # ✗ wildcards
+ansible-cmdb -i hosts -l 'web[1-3].example.com' out/ > cmdb.html  # ✗ ranges
+
+# Use exact names or groups instead:
+ansible-cmdb -i hosts -l 'web1.example.com:web2.example.com:web3.example.com' out/ > cmdb.html  # ✓
+ansible-cmdb -i hosts -l 'webservers' out/ > cmdb.html  # ✓
+```
+
+## Combining with Templates
+
+Limiting works with all templates:
+
+<Tabs>
+  <Tab title="html_fancy">
+    ```bash
+    ansible-cmdb -i hosts -l 'production' -t html_fancy out/ > prod.html
+    ```
+  </Tab>
+  
+  <Tab title="txt_table">
+    ```bash
+    ansible-cmdb -i hosts -l 'webservers' -t txt_table out/
+    ```
+  </Tab>
+  
+  <Tab title="json">
+    ```bash
+    ansible-cmdb -i hosts -l 'databases' -t json out/ > db.json
+    ```
+  </Tab>
+  
+  <Tab title="csv">
+    ```bash
+    ansible-cmdb -i hosts -l 'production' -t csv out/ > prod.csv
+    ```
+  </Tab>
+</Tabs>
+
+## Automation Examples
+
+### Generate Multiple CMDBs
+
+Create separate CMDB files for different groups:
+
+```bash
+#!/bin/bash
+
+# Output directory
+OUTPUT_DIR="/var/www/html/cmdb"
+
+# Generate CMDB for each environment
+for env in development testing production; do
+    ansible-cmdb -i /etc/ansible/hosts -l "$env" /var/cache/ansible/facts > "$OUTPUT_DIR/${env}_cmdb.html"
+done
+
+# Generate CMDB for each customer
+for customer in acme globex initech; do
+    ansible-cmdb -i /etc/ansible/hosts -l "cust.${customer}" /var/cache/ansible/facts > "$OUTPUT_DIR/${customer}_cmdb.html"
+done
+```
+
+### Scheduled Reports
+
+Use cron to generate regular reports:
+
+```cron
+# Generate production CMDB daily at 2 AM
+0 2 * * * /usr/local/bin/ansible-cmdb -i /etc/ansible/hosts -l 'production' /var/cache/ansible/facts > /var/www/html/prod_cmdb.html
+
+# Generate development CMDB every 6 hours
+0 */6 * * * /usr/local/bin/ansible-cmdb -i /etc/ansible/hosts -l 'development' /var/cache/ansible/facts > /var/www/html/dev_cmdb.html
+```
+
+## Best Practices
+
+<Tip>
+  1. **Organize your inventory** - Use meaningful group names that map to your limiting needs
+  2. **Use hierarchical groups** - Create parent groups for easier limiting:
+     ```ini
+     [production:children]
+     prod_web
+     prod_db
+     prod_app
+     ```
+  3. **Document patterns** - Keep a list of common limit patterns for your team
+  4. **Test patterns** - Verify your pattern matches expected hosts using Ansible first:
+     ```bash
+     ansible -i hosts --list-hosts 'production:!databases'
+     ```
+  5. **Combine with parameters** - Use limiting with template parameters for customized output:
+     ```bash
+     ansible-cmdb -i hosts -l 'production' -p skip_empty=1 out/ > prod.html
+     ```
+</Tip>
+
+## Troubleshooting
+
+### No hosts in output
+
+If the generated CMDB is empty:
+
+1. Verify the inventory contains matching hosts:
+   ```bash
+   ansible -i hosts --list-hosts 'your-pattern'
+   ```
+
+2. Check that fact files exist for those hosts:
+   ```bash
+   ls out/
+   ```
+
+3. Ensure host names match exactly between inventory and fact files
+
+### Unexpected hosts included
+
+If wrong hosts appear:
+
+1. Check group memberships in your inventory
+2. Remember that patterns use OR logic (`:` means union)
+3. Use `!` to explicitly exclude unwanted groups
+
+### Limiting without inventory
+
+If you see an error about limiting requiring inventory:
+
+```bash
+# This won't work:
+ansible-cmdb -l 'production' out/ > cmdb.html
+
+# You must specify inventory:
+ansible-cmdb -i hosts -l 'production' out/ > cmdb.html
+```

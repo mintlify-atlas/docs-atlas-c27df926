@@ -1,0 +1,293 @@
+---
+title: Template Parameters
+description: Configure template behavior with parameters
+---
+
+Some templates support parameters that influence their output. Parameters customize template behavior without requiring custom template files.
+
+## Specifying Parameters
+
+Use the `-p` or `--params` option with comma-separated key=value pairs:
+
+```bash
+ansible-cmdb -t html_fancy -p local_js=1,collapsed=1 out/ > overview.html
+```
+
+<Warning>
+Parameters must **not** contain spaces. Use commas to separate multiple parameters.
+</Warning>
+
+### Examples
+
+<CodeGroup>
+```bash Single Parameter
+ansible-cmdb -p local_js=1 out/ > overview.html
+```
+
+```bash Multiple Parameters
+ansible-cmdb -p local_js=1,collapsed=1,skip_empty=1 out/ > overview.html
+```
+
+```bash With Template and Inventory
+ansible-cmdb -t html_fancy -p local_js=1 -i hosts out/ > overview.html
+```
+</CodeGroup>
+
+## html_fancy Parameters
+
+The default `html_fancy` template supports these parameters:
+
+### local_js
+
+**Values**: `0` (default) or `1`
+
+Load JavaScript libraries from local disk instead of CDN:
+
+```bash
+ansible-cmdb -p local_js=1 out/ > overview.html
+```
+
+**When to use**:
+- Offline environments without internet access
+- Security policies prohibit external resources
+- Faster loading in air-gapped networks
+
+**Requirements**:
+Local copies of required libraries must be present in the same directory as the generated HTML.
+
+### collapsed
+
+**Values**: `0` (default) or `1`
+
+Collapse all host details by default:
+
+```bash
+ansible-cmdb -p collapsed=1 out/ > overview.html
+```
+
+**When to use**:
+- Large numbers of hosts (>100)
+- Overview table is more important than details
+- Faster initial page load
+
+Users can still expand individual hosts by clicking.
+
+### host_details
+
+**Values**: `1` (default) or `0`
+
+Control whether host details are rendered at all:
+
+```bash
+ansible-cmdb -p host_details=0 out/ > overview.html
+```
+
+**When to use**:
+- Only need the overview table
+- Significantly reduce file size
+- Faster rendering for large environments (>500 hosts)
+
+<Info>
+With `host_details=0`, clicking host names in the table has no effect.
+</Info>
+
+### skip_empty
+
+**Values**: `0` (default) or `1`
+
+Skip hosts for which no facts were gathered:
+
+```bash
+ansible-cmdb -p skip_empty=1 out/ > overview.html
+```
+
+**When to use**:
+- Filter out unreachable hosts
+- Only show hosts with complete information
+- Clean up output after failed fact gathering
+
+**What gets skipped**:
+- Hosts without `ansible_facts` key
+- Hosts with gathering errors
+- Manually added hosts without facts
+
+## html_fancy_split Parameters
+
+The `html_fancy_split` template accepts the same parameters as `html_fancy`:
+
+```bash
+ansible-cmdb -t html_fancy_split -p local_js=1,collapsed=1 -i hosts out/
+```
+
+**Note**: This template generates a `cmdb/` directory instead of a single file.
+
+## Common Parameter Combinations
+
+### Offline Environment
+
+```bash
+ansible-cmdb -p local_js=1 out/ > overview.html
+```
+
+Use local resources for air-gapped environments.
+
+### Large Environment Optimization
+
+```bash
+ansible-cmdb -p collapsed=1,skip_empty=1 out/ > overview.html
+```
+
+Collapse details and skip unreachable hosts for faster loading.
+
+### Overview Only
+
+```bash
+ansible-cmdb -p host_details=0,skip_empty=1 out/ > overview.html
+```
+
+Generate only the table without detailed host information.
+
+### Production Report
+
+```bash
+ansible-cmdb -t html_fancy \
+  -p local_js=1,skip_empty=1 \
+  -i hosts \
+  --limit production \
+  out/ > prod-report.html
+```
+
+Combine parameters with other options for comprehensive filtering.
+
+## Using Parameters in Custom Templates
+
+Access parameters in custom templates via the `params` dictionary:
+
+```python
+<%! from ansiblecmdb.util import to_bool %>
+
+<%
+  # Get parameter with default value
+  local_js = to_bool(params.get('local_js', False))
+  collapsed = to_bool(params.get('collapsed', False))
+  skip_empty = to_bool(params.get('skip_empty', False))
+%>
+
+% if local_js:
+  <script src="local/jquery.min.js"></script>
+% else:
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+% endif
+
+% if collapsed:
+  <% collapsed_class = "collapsed" %>
+% else:
+  <% collapsed_class = "" %>
+% endif
+```
+
+### Boolean Parameters
+
+Use the `to_bool()` utility to convert parameter strings:
+
+```python
+<%! from ansiblecmdb.util import to_bool %>
+
+<%
+  my_param = to_bool(params.get('my_param', False))
+%>
+
+% if my_param:
+  <p>Parameter is enabled</p>
+% endif
+```
+
+Accepted boolean values:
+- True: `1`, `true`, `True`, `yes`, `Yes`
+- False: `0`, `false`, `False`, `no`, `No`
+
+### String Parameters
+
+```python
+<%
+  title = params.get('title', 'Ansible CMDB')
+  theme = params.get('theme', 'default')
+%>
+
+<title>${title}</title>
+<body class="theme-${theme}">
+```
+
+Use with:
+
+```bash
+ansible-cmdb -p title="Production Hosts",theme=dark -t ./my_template.tpl out/
+```
+
+### Numeric Parameters
+
+```python
+<%
+  max_hosts = int(params.get('max_hosts', 100))
+  port = int(params.get('port', 8080))
+%>
+```
+
+## Parameter Validation
+
+Validate parameters in your templates:
+
+```python
+<%
+  theme = params.get('theme', 'light')
+  valid_themes = ['light', 'dark', 'blue']
+  
+  if theme not in valid_themes:
+    theme = 'light'
+%>
+```
+
+## Built-in Template Parameters Reference
+
+### html_fancy & html_fancy_split
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `local_js` | Boolean | `0` | Load resources from local disk |
+| `collapsed` | Boolean | `0` | Collapse host details by default |
+| `host_details` | Boolean | `1` | Render host details sections |
+| `skip_empty` | Boolean | `0` | Skip hosts without facts |
+
+### Other Templates
+
+Most other templates (`txt_table`, `csv`, `json`, `markdown`, `sql`) do not currently support parameters. They generate output in a fixed format.
+
+## Combining with Other Options
+
+Parameters work with all other ansible-cmdb options:
+
+```bash
+# Parameters + inventory + columns + limit
+ansible-cmdb \
+  -t html_fancy \
+  -p local_js=1,collapsed=1 \
+  -i hosts \
+  --columns name,fqdn,os,ip,vcpus,ram \
+  --limit webservers \
+  out/ > webservers.html
+```
+
+```bash
+# Parameters + custom columns + fact cache
+ansible-cmdb \
+  -p skip_empty=1 \
+  -C custom_cols.conf \
+  -f /var/cache/ansible/facts \
+  > cmdb.html
+```
+
+## See Also
+
+- [Custom Templates](/advanced/custom-templates) - Create templates that accept parameters
+- [Templates Overview](/usage/templates) - Available built-in templates
+- [Command Reference](/usage/command-reference) - Common usage patterns

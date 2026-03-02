@@ -1,0 +1,394 @@
+---
+title: Custom Templates
+description: Create custom templates to build entirely different CMDBs using Mako
+---
+
+Create custom templates to enhance existing output formats or build completely different CMDBs. Ansible-cmdb uses the [Mako templating engine](http://www.makotemplates.org/) for all rendering.
+
+## When to Use Custom Templates
+
+<Info>
+Before creating a custom template, consider if simpler options meet your needs:
+- Use [custom columns](/advanced/custom-columns) to add data to existing templates
+- Use [template parameters](/advanced/parameters) to configure built-in templates
+</Info>
+
+Create custom templates when you need to:
+- Add new sections to existing templates
+- Create entirely new output formats
+- Implement organization-specific layouts
+- Generate output for custom tools
+
+## Template Basics
+
+Templates can be specified by name or path:
+
+```bash
+# By name (built-in template)
+ansible-cmdb -t html_fancy out/ > overview.html
+
+# By path (custom template)
+ansible-cmdb -t /home/user/my_template.tpl out/ > output.html
+ansible-cmdb -t ./my_template.tpl out/ > output.html
+```
+
+## Modifying Existing Templates
+
+The easiest way to create a custom template is to modify an existing one. Here's how to add a custom column to `html_fancy`:
+
+<Steps>
+  <Step title="Copy the template files">
+    Make a copy in a new directory. You'll need the main template and its definitions file:
+    
+    ```bash
+    mkdir ~/mytemplate
+    cp ~/ansible-cmdb/src/ansiblecmdb/data/tpl/html_fancy.tpl ~/mytemplate/
+    cp ~/ansible-cmdb/src/ansiblecmdb/data/tpl/html_fancy_defs.html ~/mytemplate/
+    ```
+  </Step>
+  
+  <Step title="Add column definition">
+    Edit `html_fancy_defs.html` and add an entry to the `cols =` list:
+    
+    ```python
+    <%
+      cols = [
+       ...
+       {"title": "Product Serial","id": "prodserial",    "func": col_prodserial,     "sType": "string", "visible": False},
+       {"title": "BIOS version",  "id": "bios_version",  "func": col_bios_version,   "sType": "string", "visible": True},
+      ]
+    ```
+  </Step>
+  
+  <Step title="Implement column function">
+    In the same file, find the `## Column functions` section and add your function:
+    
+    ```python
+    <%def name="col_dtap(host, **kwargs)">
+      ${jsonxs(host, 'hostvars.dtap', default='')}
+    </%def>
+    
+    <%def name="col_bios_version(host, **kwargs)">
+      ${jsonxs(host, 'ansible_facts.ansible_bios_version', default='')}
+    </%def>
+    ```
+  </Step>
+  
+  <Step title="Render the custom template">
+    **Important**: You must be in the same directory as the template files:
+    
+    ```bash
+    cd ~/mytemplate
+    ansible-cmdb -t ./html_fancy -i ~/ansible/hosts ~/ansible/out/ > cmdb.html
+    ```
+  </Step>
+</Steps>
+
+## Understanding Template Structure
+
+### Single-File Templates
+
+Simple templates use a single `.tpl` file:
+
+```python my_template.tpl
+## -*- coding: utf-8 -*-
+<%! from jsonxs import jsonxs %>
+
+<html>
+<head>
+  <title>My CMDB</title>
+</head>
+<body>
+  <h1>Hosts</h1>
+  <ul>
+  % for host in hosts:
+    <li>
+      ${host['name']} - 
+      ${jsonxs(host, 'ansible_facts.ansible_distribution', default='Unknown')}
+    </li>
+  % endfor
+  </ul>
+</body>
+</html>
+```
+
+### Multi-File Templates
+
+Complex templates separate logic into multiple files:
+
+```
+html_fancy.tpl              # Main template
+html_fancy_defs.html        # Definitions and functions
+```
+
+The main template includes definitions:
+
+```python
+<%include file="html_fancy_defs.html"/>
+```
+
+### Python Script Templates
+
+Advanced templates like `html_fancy_split` use Python scripts:
+
+```bash
+mkdir ~/mytemplate
+cp src/ansiblecmdb/data/tpl/html_fancy_defs.html ~/mytemplate/
+cp src/ansiblecmdb/data/tpl/html_fancy_split_detail.tpl ~/mytemplate/
+cp src/ansiblecmdb/data/tpl/html_fancy_split_overview.tpl ~/mytemplate/
+cp src/ansiblecmdb/data/tpl/html_fancy_split.py ~/mytemplate/
+```
+
+Render by pointing to the Python script:
+
+```bash
+cd ~/mytemplate
+ansible-cmdb -t ./html_fancy_split.py -i ~/ansible/hosts ~/ansible/out/
+```
+
+## Mako Template Syntax
+
+### Variables
+
+Access variables with `${}` syntax:
+
+```python
+${host['name']}
+${jsonxs(host, 'ansible_facts.ansible_fqdn', default='')}
+```
+
+### Python Blocks
+
+Execute Python code in `<% %>` blocks:
+
+```python
+<%
+  facts = host.get('ansible_facts', {})
+  dns = facts.get('ansible_dns', {})
+  nameservers = dns.get('nameservers', [])
+%>
+```
+
+### Control Structures
+
+Use `%` for control flow:
+
+```python
+% for host in hosts:
+  <li>${host['name']}</li>
+% endfor
+
+% if jsonxs(host, 'ansible_facts.ansible_distribution') == 'Ubuntu':
+  <span>Ubuntu detected</span>
+% endif
+```
+
+### Functions (defs)
+
+Define reusable template functions:
+
+```python
+<%def name="col_fqdn(host, **kwargs)">
+  ${jsonxs(host, 'ansible_facts.ansible_fqdn', default='')}
+</%def>
+
+## Use the function
+${col_fqdn(host)}
+```
+
+## Available Template Variables
+
+### hosts
+
+List of all host dictionaries:
+
+```python
+% for host in hosts:
+  ${host['name']}
+% endfor
+```
+
+### host
+
+Current host being processed (in column functions):
+
+```python
+<%def name="col_os(host, **kwargs)">
+  ${jsonxs(host, 'ansible_facts.ansible_distribution', default='')}
+</%def>
+```
+
+### Host Dictionary Structure
+
+```python
+{
+  'name': 'server.example.com',
+  'groups': ['webservers', 'production'],
+  'hostvars': {
+    'dtap': 'prod',
+    'comment': 'Main web server'
+  },
+  'ansible_facts': {
+    'ansible_fqdn': 'server.example.com',
+    'ansible_distribution': 'Ubuntu',
+    'ansible_default_ipv4': {
+      'address': '192.168.1.10'
+    },
+    ...
+  },
+  'custom_facts': {
+    'software': {...}
+  }
+}
+```
+
+## Safe Data Access
+
+<Warning>
+Always use safe access methods. Missing data will crash the template with a KeyError.
+</Warning>
+
+<CodeGroup>
+```python Unsafe
+fqdn = host['ansible_facts']['ansible_fqdn']
+```
+
+```python Safe with .get()
+facts = host.get('ansible_facts', {})
+fqdn = facts.get('ansible_fqdn', '')
+```
+
+```python Safe with jsonxs (recommended)
+fqdn = jsonxs(host, 'ansible_facts.ansible_fqdn', default='')
+```
+</CodeGroup>
+
+## Using jsonxs
+
+The `jsonxs` function provides safe path-based access to nested data:
+
+```python
+<%! from jsonxs import jsonxs %>
+
+## Basic usage
+${jsonxs(host, 'ansible_facts.ansible_fqdn', default='')}
+
+## In Python blocks
+<%
+  ip = jsonxs(host, 'ansible_facts.ansible_default_ipv4.address', default='N/A')
+  nameservers = jsonxs(host, 'ansible_facts.ansible_dns.nameservers', default=[])
+%>
+```
+
+See the [jsonxs documentation](https://github.com/fboender/jsonxs) for advanced usage.
+
+## Column Function Example
+
+Here's a complete column function from `html_fancy_defs.html`:
+
+```python
+<%def name="col_main_ip(host, **kwargs)">
+  <%
+    default_ipv4 = ''
+    if jsonxs(host, 'ansible_facts.ansible_os_family', default='') == 'Windows':
+      ipv4_addresses = [ip for ip in jsonxs(host, 'ansible_facts.ansible_ip_addresses', default=[]) if ':' not in ip]
+      if ipv4_addresses:
+        default_ipv4 = ipv4_addresses[0]
+    else:
+      default_ipv4 = jsonxs(host, 'ansible_facts.ansible_default_ipv4.address', default='')
+  %>
+  ${default_ipv4}
+</%def>
+```
+
+This function:
+1. Handles Windows hosts differently (uses `ansible_ip_addresses`)
+2. Filters out IPv6 addresses
+3. Falls back to `ansible_default_ipv4.address` for other OS families
+4. Returns empty string if no IP found
+
+## Complete Custom Template Example
+
+A minimal custom template that generates a simple HTML list:
+
+```python simple_list.tpl
+## -*- coding: utf-8 -*-
+<%! from jsonxs import jsonxs %>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Host List</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; }
+    .host { padding: 10px; border-bottom: 1px solid #ccc; }
+    .name { font-weight: bold; }
+    .ip { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Ansible Hosts</h1>
+  % for host in hosts:
+    <%
+      name = host.get('name', 'Unknown')
+      fqdn = jsonxs(host, 'ansible_facts.ansible_fqdn', default='N/A')
+      ip = jsonxs(host, 'ansible_facts.ansible_default_ipv4.address', default='N/A')
+      os = jsonxs(host, 'ansible_facts.ansible_distribution', default='Unknown')
+      version = jsonxs(host, 'ansible_facts.ansible_distribution_version', default='')
+    %>
+    <div class="host">
+      <div class="name">${name}</div>
+      <div>FQDN: ${fqdn}</div>
+      <div class="ip">IP: ${ip}</div>
+      <div>OS: ${os} ${version}</div>
+    </div>
+  % endfor
+</body>
+</html>
+```
+
+Use it with:
+
+```bash
+ansible-cmdb -t ./simple_list.tpl -i hosts out/ > list.html
+```
+
+## Accessing Template Parameters
+
+Templates can accept parameters via the `-p` option:
+
+```python
+<%
+  # Get parameter with default
+  local_js = to_bool(params.get('local_js', False))
+  collapsed = to_bool(params.get('collapsed', False))
+%>
+
+% if local_js:
+  <script src="local/jquery.js"></script>
+% else:
+  <script src="https://cdn.example.com/jquery.js"></script>
+% endif
+```
+
+See [Template Parameters](/advanced/parameters) for more details.
+
+## Debugging Templates
+
+Enable debug output to troubleshoot template issues:
+
+```bash
+ansible-cmdb -d -t ./my_template.tpl out/ > output.html
+```
+
+Common errors:
+- **KeyError**: Access to missing data - use `.get()` or `jsonxs` with defaults
+- **NameError**: Undefined variable - check variable names and imports
+- **SyntaxError**: Invalid Mako syntax - check `%`, `<% %>`, and `${}` usage
+
+## See Also
+
+- [Custom Columns](/advanced/custom-columns) - Simpler alternative for adding columns
+- [Template Parameters](/advanced/parameters) - Configure template behavior
+- [Mako Documentation](http://www.makotemplates.org/) - Full Mako template reference
+- [jsonxs Documentation](https://github.com/fboender/jsonxs) - Safe data access

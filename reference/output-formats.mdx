@@ -1,0 +1,198 @@
+---
+title: Output Formats
+description: Generate host overviews in different formats from Ansible fact gathering output
+---
+
+ansible-cmdb supports multiple output formats to suit different use cases. Select a format using the `-t` or `--template` option.
+
+## Format Overview
+
+<CardGroup cols={2}>
+  <Card title="html_fancy" icon="browser" href="#html-fancy">
+    Dynamic, modern HTML page with searchable, sortable host tables
+  </Card>
+  
+  <Card title="html_fancy_split" icon="layer-group" href="#html-fancy-split">
+    Split HTML output with separate files for each host
+  </Card>
+  
+  <Card title="txt_table" icon="table" href="#txt-table">
+    Quick text table summary with minimal host information
+  </Card>
+  
+  <Card title="json" icon="brackets-curly" href="#json">
+    Complete JSON export of all hosts, groups, and variables
+  </Card>
+  
+  <Card title="csv" icon="file-csv" href="#csv">
+    CSV spreadsheet format for host data
+  </Card>
+  
+  <Card title="markdown" icon="markdown" href="#markdown">
+    Host information formatted in Markdown
+  </Card>
+  
+  <Card title="markdown_split" icon="markdown" href="#markdown-split">
+    Split Markdown output with separate files for each host
+  </Card>
+  
+  <Card title="sql" icon="database" href="#sql">
+    SQL file for importing into SQLite or MySQL databases
+  </Card>
+</CardGroup>
+
+## html_fancy
+
+**Default template.** A fancy HTML page that uses jQuery and DataTables to give you a searchable, sortable table overview of all hosts with detailed information just a click away.
+
+### Usage
+
+```bash
+ansible-cmdb -t html_fancy -i hosts out/ > overview.html
+```
+
+### Parameters
+
+The html_fancy template accepts optional parameters:
+
+- `local_js=0|1`: Load resources from local disk (default=`0`). If set, will load resources from the local disk instead of over the network.
+- `collapsed=0|1`: Controls whether host information is collapsed by default or not. A value of `1` will collapse all host information by default (default=`0`).
+- `host_details=0|1`: Render host details or not (default=`1`).
+- `skip_empty=0|1`: Skip hosts for which no facts were gathered (unreachable, etc) (default=`0`).
+
+### Example with Parameters
+
+```bash
+ansible-cmdb -t html_fancy -p local_js=1 -p collapsed=1 -i hosts out/ > overview.html
+```
+
+## html_fancy_split
+
+This template is basically the same as the **html_fancy** template, but it generates a `cmdb/` directory with an `index.html` file and a separate html file for each host's details. This is useful if you have a large amount of hosts and the html_fancy template is rendering too slow.
+
+### Usage
+
+```bash
+ansible-cmdb -t html_fancy_split -i hosts out/
+```
+
+This creates a `cmdb/` directory with:
+- `index.html` - Main overview page
+- `[hostname].html` - Individual host detail pages
+
+### Parameters
+
+Accepts the same parameters as the `html_fancy` template:
+
+- `local_js=0|1`: Load resources from local disk (default=`0`)
+- `collapsed=0|1`: Controls whether host information is collapsed by default (default=`0`)
+- `host_details=0|1`: Render host details or not (default=`1`)
+- `skip_empty=0|1`: Skip hosts for which no facts were gathered (default=`0`)
+
+## txt_table
+
+A quick text table summary of the available hosts with some minimal information. Outputs plain text suitable for terminal display.
+
+### Usage
+
+```bash
+ansible-cmdb -t txt_table -i hosts out/
+```
+
+### Column Support
+
+The txt_table template supports custom column selection. See [Column Reference](/reference/column-reference) for available columns.
+
+```bash
+ansible-cmdb -t txt_table --columns name,os,ip,mem,cpus facts/
+```
+
+## json
+
+Dumps all hosts including groups, variables, and custom info in JSON format. Perfect for programmatic access or integration with other tools.
+
+### Usage
+
+```bash
+ansible-cmdb -t json -i hosts out/ > cmdb.json
+```
+
+### Output Structure
+
+The JSON output includes:
+- Complete host facts
+- Group memberships
+- Host variables
+- Custom variables and facts
+
+## csv
+
+The CSV template outputs a CSV file of your hosts. Can be imported into spreadsheet applications or other tools.
+
+### Usage
+
+```bash
+ansible-cmdb -t csv -i hosts out/ > hosts.csv
+```
+
+## markdown
+
+The Markdown template generates host information in Markdown format, suitable for documentation or wiki pages.
+
+### Usage
+
+```bash
+ansible-cmdb -t markdown -i hosts out/ > hosts.md
+```
+
+## markdown_split
+
+Similar to html_fancy_split, this template generates a directory with a main index file and separate Markdown files for each host's details.
+
+### Usage
+
+```bash
+ansible-cmdb -t markdown_split -i hosts out/
+```
+
+This creates a directory with:
+- `index.md` - Main overview page
+- `[hostname].md` - Individual host detail pages
+
+## sql
+
+The SQL template generates an `.sql` file that can be loaded into an SQLite or MySQL database.
+
+### Usage
+
+```bash
+ansible-cmdb -t sql -i hosts out/ > cmdb.sql
+```
+
+### Loading into MySQL
+
+```bash
+# Create database
+echo "CREATE DATABASE ansiblecmdb" | mysql
+
+# Import data
+mysql ansiblecmdb < cmdb.sql
+```
+
+### Loading into SQLite
+
+```bash
+sqlite3 cmdb.db < cmdb.sql
+```
+
+## Selecting a Format
+
+Choose your output format based on your use case:
+
+- **Interactive browsing**: Use `html_fancy` for the best experience
+- **Large inventories**: Use `html_fancy_split` or `markdown_split` for better performance
+- **Quick checks**: Use `txt_table` for terminal-friendly output
+- **Automation/Integration**: Use `json` for programmatic access
+- **Reporting**: Use `csv` for spreadsheet analysis
+- **Documentation**: Use `markdown` for wiki or docs
+- **Database analysis**: Use `sql` for database querying

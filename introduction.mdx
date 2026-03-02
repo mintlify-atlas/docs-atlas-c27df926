@@ -1,0 +1,135 @@
+---
+title: ansible-cmdb
+description: Generate host overviews from Ansible fact gathering output
+---
+
+# Ansible Configuration Management Database
+
+Ansible-cmdb takes the output of Ansible's fact gathering and converts it into a static HTML overview page (and other formats) containing system configuration information.
+
+It supports multiple types of output (HTML, CSV, SQL, etc) and extending information gathered by Ansible with custom data. For each host it also shows the groups, host variables, custom variables and machine-local facts.
+
+<CardGroup cols={2}>
+  <Card title="Multiple Output Formats" icon="file-export">
+    Generate HTML, CSV, JSON, Markdown, SQL, and plain text outputs from your Ansible facts
+  </Card>
+  <Card title="Host & Group Variables" icon="server">
+    Display host variables, group memberships, and custom variables for each system
+  </Card>
+  <Card title="Extensible Facts" icon="plus-circle">
+    Extend and override gathered facts with custom data or manually add new hosts
+  </Card>
+  <Card title="Custom Columns" icon="table-columns">
+    Add custom columns to extract and display specific host facts using JSONPath expressions
+  </Card>
+</CardGroup>
+
+## Supported Output Templates
+
+<Note>
+Not all features are supported by all templates. The `html_fancy` template provides the most comprehensive feature set.
+</Note>
+
+### HTML Templates
+
+**html_fancy** - A dynamic, modern HTML page containing all hosts with searchable, sortable tables powered by jQuery and DataTables.
+
+```bash
+ansible-cmdb --template html_fancy out/ > overview.html
+```
+
+**html_fancy_split** - Same as html_fancy, but with each host's details in a separate file for better performance with large numbers of hosts.
+
+```bash
+ansible-cmdb --template html_fancy_split out/
+```
+
+### Data Export Templates
+
+**CSV** - Export to comma-separated format for spreadsheet analysis:
+```bash
+ansible-cmdb --template csv out/ > hosts.csv
+```
+
+**JSON** - Dump all facts in JSON format:
+```bash
+ansible-cmdb --template json out/ > hosts.json
+```
+
+**SQL** - Generate SQL statements for importing into MySQL or SQLite:
+```bash
+ansible-cmdb --template sql out/ > cmdb.sql
+```
+
+**Markdown** - Generate Markdown format for documentation:
+```bash
+ansible-cmdb --template markdown out/ > hosts.md
+```
+
+**txt_table** - Plain text table for console output:
+```bash
+ansible-cmdb --template txt_table out/
+```
+
+## Key Features
+
+### Host Overview and Details
+
+Get a comprehensive overview of all your hosts with detailed information including:
+- Operating system and version
+- Network interfaces and IP addresses
+- Memory and CPU information
+- Disk usage and mounted filesystems
+- Installed packages and services
+- Virtualization information
+
+### Custom Facts and Variables
+
+Extend your host information with:
+- Host and group variables from your Ansible inventory
+- Custom facts defined in `/etc/ansible/facts.d` on each host
+- Manual fact extensions and overrides
+- Special variables like `dtap` (development/test/acceptance/production), `comment`, and `ext_id`
+
+### Advanced Filtering and Customization
+
+- **Column Selection**: Show only specific columns using `--columns`
+- **Host Limiting**: Filter hosts by pattern using `--limit`
+- **Custom Columns**: Define custom columns with JSONPath expressions or Mako templates
+- **Template Parameters**: Customize template behavior with options like `local_js`, `collapsed`, etc.
+
+## Requirements
+
+Ansible-cmdb requires **Python v2.7+ or Python 3.0+**.
+
+It works on any system that can run Python, including:
+- Linux (Debian, Ubuntu, CentOS, RedHat, etc.)
+- BSD
+- macOS
+- Windows
+- Solaris
+
+<Info>
+Ansible-cmdb is licensed under GPLv3 and is actively maintained.
+</Info>
+
+## Example Output
+
+The HTML fancy template provides:
+- A searchable, sortable table of all hosts
+- Quick overview with key metrics (OS, IP, memory, CPUs)
+- Expandable detail sections for each host
+- Custom variables and facts display
+- Group membership visualization
+- DTAP environment indicators
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install ansible-cmdb via pip, package manager, or from source
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with a working example in minutes
+  </Card>
+</CardGroup>

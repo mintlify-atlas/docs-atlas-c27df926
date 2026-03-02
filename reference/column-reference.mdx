@@ -1,0 +1,369 @@
+---
+title: Column Reference
+description: Complete reference of all available columns in ansible-cmdb host tables
+---
+
+The html_fancy and txt_table templates display host information in columns. This page documents all available columns, their data sources, and default visibility.
+
+## Column Overview
+
+Columns can be customized using:
+- `--columns` flag to specify which columns to include
+- `--exclude-cols` flag to exclude specific columns
+- Interactive column toggles in the HTML interface
+
+## Available Columns
+
+<Accordion title="Name" defaultOpen>
+  **Column ID**: `name`  
+  **Type**: string  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes
+
+  The hostname of the system. Links to detailed host information.
+
+  **Source**: `host.name`
+</Accordion>
+
+<Accordion title="Groups">
+  **Column ID**: `groups`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Ansible groups this host belongs to. Multiple groups are displayed on separate lines.
+
+  **Source**: `host.groups`
+</Accordion>
+
+<Accordion title="Cust">
+  **Column ID**: `cust`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Custom customer identifier from host variables.
+
+  **Source**: `hostvars.cust`
+</Accordion>
+
+<Accordion title="DTAP">
+  **Column ID**: `dtap`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  DTAP (Development, Testing, Acceptance, Production) environment designation.
+
+  **Source**: `hostvars.dtap`
+</Accordion>
+
+<Accordion title="Comment">
+  **Column ID**: `comment`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Custom comment field from host variables.
+
+  **Source**: `hostvars.comment`
+</Accordion>
+
+<Accordion title="Ext ID">
+  **Column ID**: `ext_id`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  External identifier for integration with other systems.
+
+  **Source**: `hostvars.ext_id`
+</Accordion>
+
+<Accordion title="FQDN">
+  **Column ID**: `fqdn`  
+  **Type**: string  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes
+
+  Fully Qualified Domain Name of the host.
+
+  **Source**: `ansible_facts.ansible_fqdn`
+</Accordion>
+
+<Accordion title="Main IP">
+  **Column ID**: `main_ip`  
+  **Type**: string  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes
+
+  Primary IPv4 address of the host. For Windows, uses the first IPv4 address; for others, uses the default IPv4 interface.
+
+  **Source**: 
+  - Windows: `ansible_facts.ansible_ip_addresses[0]` (first IPv4)
+  - Other: `ansible_facts.ansible_default_ipv4.address`
+</Accordion>
+
+<Accordion title="All IPv4">
+  **Column ID**: `all_ipv4`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  All IPv4 addresses assigned to the host. Multiple addresses are displayed on separate lines.
+
+  **Source**: 
+  - Windows: `ansible_facts.ansible_ip_addresses` (filtered for IPv4)
+  - Other: `ansible_facts.ansible_all_ipv4_addresses`
+</Accordion>
+
+<Accordion title="All IPv6">
+  **Column ID**: `all_ipv6`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  All IPv6 addresses assigned to the host. Multiple addresses are displayed on separate lines.
+
+  **Source**: `ansible_facts.ansible_all_ipv6_addresses`
+</Accordion>
+
+<Accordion title="OS">
+  **Column ID**: `os`  
+  **Type**: string  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes
+
+  Operating system distribution and version.
+
+  **Source**: 
+  - OpenBSD: `ansible_facts.ansible_distribution` + `ansible_distribution_release`
+  - Other: `ansible_facts.ansible_distribution` + `ansible_distribution_version`
+</Accordion>
+
+<Accordion title="Kernel">
+  **Column ID**: `kernel`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Kernel version running on the host.
+
+  **Source**: `ansible_facts.ansible_kernel`
+</Accordion>
+
+<Accordion title="Arch">
+  **Column ID**: `arch`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  System architecture and userspace architecture.
+
+  **Source**: `ansible_facts.ansible_architecture` / `ansible_userspace_architecture`
+</Accordion>
+
+<Accordion title="Virt">
+  **Column ID**: `virt`  
+  **Type**: string  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes
+
+  Virtualization type and role (e.g., "kvm / guest" or "physical / host").
+
+  **Source**: `ansible_facts.ansible_virtualization_type` / `ansible_virtualization_role`
+</Accordion>
+
+<Accordion title="CPU type">
+  **Column ID**: `cpu_type`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  CPU model name. Links to CPU benchmark information.
+
+  **Source**: `ansible_facts.ansible_processor[-1]` (last processor in list)
+</Accordion>
+
+<Accordion title="vCPUs">
+  **Column ID**: `vcpus`  
+  **Type**: numeric  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes (numeric sort)
+
+  Number of virtual CPUs available to the system.
+
+  **Source**: `ansible_facts.ansible_processor_vcpus` or `ansible_processor_cores`
+</Accordion>
+
+<Accordion title="RAM [GiB]">
+  **Column ID**: `ram`  
+  **Type**: numeric  
+  **Default Visibility**: Visible  
+  **Sortable**: Yes (numeric sort)
+
+  Total RAM in GiB (converted from MB).
+
+  **Source**: `ansible_facts.ansible_memtotal_mb` (converted to GiB)
+</Accordion>
+
+<Accordion title="Mem Usage">
+  **Column ID**: `mem_usage`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Memory usage as a progress bar showing used/total memory in GiB.
+
+  **Source**: `ansible_facts.ansible_memory_mb.nocache.used` / `ansible_memory_mb.real.total`
+  
+  Displays a visual progress bar with detailed GiB values.
+</Accordion>
+
+<Accordion title="Swap Usage">
+  **Column ID**: `swap_usage`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Swap usage as a progress bar showing used/total swap in GiB.
+
+  **Source**: `ansible_facts.ansible_memory_mb.swap.used` / `ansible_memory_mb.swap.total`
+  
+  Displays a visual progress bar with detailed GiB values.
+</Accordion>
+
+<Accordion title="Disk usage">
+  **Column ID**: `disk_usage`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Disk usage for all mounted filesystems. Shows multiple progress bars, one per mount point.
+
+  **Source**: `ansible_facts.ansible_mounts[]`
+  
+  Each mount shows:
+  - Progress bar with usage percentage
+  - Mount point path
+  - Used/total size in GiB
+</Accordion>
+
+<Accordion title="PhysDisk size">
+  **Column ID**: `physdisk_size`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Physical disk sizes for all detected block devices.
+
+  **Source**: `ansible_facts.ansible_devices[device_name].size`
+  
+  Lists each device name with its size (e.g., "sda: 100GB").
+</Accordion>
+
+<Accordion title="Nr of Ifaces">
+  **Column ID**: `nr_of_ifaces`  
+  **Type**: numeric  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes (numeric sort)
+
+  Total number of network interfaces.
+
+  **Source**: `len(ansible_facts.ansible_interfaces)`
+</Accordion>
+
+<Accordion title="Timestamp">
+  **Column ID**: `timestamp`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Timestamp when facts were gathered (ISO 8601 format).
+
+  **Source**: `ansible_facts.ansible_date_time.iso8601`
+</Accordion>
+
+<Accordion title="Product Name">
+  **Column ID**: `prodname`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Hardware product name from system DMI/SMBIOS.
+
+  **Source**: `ansible_facts.ansible_product_name`
+</Accordion>
+
+<Accordion title="Product Serial">
+  **Column ID**: `prodserial`  
+  **Type**: string  
+  **Default Visibility**: Hidden  
+  **Sortable**: Yes
+
+  Hardware product serial number from system DMI/SMBIOS.
+
+  **Source**: `ansible_facts.ansible_product_serial`
+</Accordion>
+
+## Column Usage
+
+### Specifying Columns
+
+Use the `--columns` flag to specify which columns to display:
+
+```bash
+ansible-cmdb -t txt_table --columns name,os,ip,mem,cpus facts/
+```
+
+### Excluding Columns
+
+Use the `--exclude-cols` flag to hide specific columns:
+
+```bash
+ansible-cmdb -t html_fancy --exclude-cols groups,cust -i hosts out/ > overview.html
+```
+
+### Default Visible Columns
+
+The following columns are visible by default in html_fancy:
+
+- Name (`name`)
+- FQDN (`fqdn`)
+- Main IP (`main_ip`)
+- OS (`os`)
+- Virt (`virt`)
+- vCPUs (`vcpus`)
+- RAM [GiB] (`ram`)
+
+### Interactive Column Toggles
+
+The html_fancy template provides an interactive column toggle interface at the top of the page. Click column names to show/hide them. Preferences are saved in browser localStorage.
+
+## Column Data Types
+
+Columns have different sort types for proper ordering:
+
+- **string**: Alphabetical sorting
+- **num**: Numeric sorting
+
+Numeric columns (vCPUs, RAM, Nr of Ifaces) use numeric sorting to ensure "10" comes after "9" instead of after "1".
+
+## Custom Columns
+
+You can extend the built-in columns with custom columns using the `--cust-cols` flag. Custom columns can use:
+
+- **jsonxs expressions**: Path-based lookups into fact data
+- **Mako templates**: String templates with access to host data
+
+See the ansible-cmdb documentation on extending functionality for details on creating custom columns.
+
+## Column Definitions Location
+
+Column definitions are located in:
+
+```
+src/ansiblecmdb/data/tpl/html_fancy_defs.html
+```
+
+The `var_cols()` function (lines 15-59) defines all built-in columns, and individual column functions (lines 499-703) implement the data extraction and formatting logic for each column.

@@ -1,0 +1,291 @@
+---
+title: Templates
+description: Template system and available templates for ansible-cmdb output
+---
+
+## Overview
+
+Ansible-cmdb uses the [Mako templating engine](http://www.makotemplates.org/) to generate output in various formats. Templates control how host information is presented and can be customized or extended.
+
+## Specifying Templates
+
+Use the `-t` or `--template` option to select a template:
+
+```bash
+ansible-cmdb -t html_fancy out/ > overview.html
+```
+
+### Template References
+
+Templates can be specified in two ways:
+
+<Tabs>
+  <Tab title="By Name">
+    Use the built-in template name:
+    
+    ```bash
+    ansible-cmdb -t txt_table out/ > overview.txt
+    ```
+  </Tab>
+  
+  <Tab title="By Path">
+    Use a relative or absolute path to a custom template file:
+    
+    ```bash
+    ansible-cmdb -t /home/user/my_template.tpl out/ > output.html
+    ```
+  </Tab>
+</Tabs>
+
+## Available Templates
+
+### html_fancy (default)
+
+A dynamic, modern HTML page with a searchable and sortable table overview of all hosts. Uses jQuery and DataTables for interactive functionality.
+
+```bash
+ansible-cmdb -t html_fancy out/ > overview.html
+```
+
+**Features:**
+- Interactive searchable/sortable table
+- Expandable host details
+- Responsive design
+- Optional local resource loading
+
+**Parameters:**
+
+<ParamField path="local_js" type="boolean" default="0">
+  Load JavaScript and CSS resources from local disk instead of CDN. Useful for offline viewing.
+  
+  ```bash
+  ansible-cmdb -p local_js=1 out/ > overview.html
+  ```
+</ParamField>
+
+<ParamField path="collapsed" type="boolean" default="0">
+  Collapse all host detail sections by default. Users can click to expand.
+  
+  ```bash
+  ansible-cmdb -p collapsed=1 out/ > overview.html
+  ```
+</ParamField>
+
+<ParamField path="host_details" type="boolean" default="1">
+  Control whether to render detailed host information sections.
+  
+  ```bash
+  ansible-cmdb -p host_details=0 out/ > overview.html
+  ```
+</ParamField>
+
+<ParamField path="skip_empty" type="boolean" default="0">
+  Skip hosts for which no facts were gathered (unreachable hosts, etc).
+  
+  ```bash
+  ansible-cmdb -p skip_empty=1 out/ > overview.html
+  ```
+</ParamField>
+
+**Example with multiple parameters:**
+
+```bash
+ansible-cmdb -t html_fancy -p local_js=1,collapsed=1 out/ > overview.html
+```
+
+<Note>
+  Remember: Parameters must be separated by commas with **no spaces**.
+</Note>
+
+### html_fancy_split
+
+Similar to `html_fancy`, but generates a `cmdb/` directory with an `index.html` file and separate HTML files for each host's details. Useful for large numbers of hosts where a single page might render slowly.
+
+```bash
+ansible-cmdb -t html_fancy_split -i hosts out/
+```
+
+**Output structure:**
+```
+cmdb/
+├── index.html
+├── host1.example.com.html
+├── host2.example.com.html
+└── ...
+```
+
+**Parameters:**
+
+Accepts the same parameters as `html_fancy`: `local_js`, `collapsed`, `host_details`, `skip_empty`.
+
+### txt_table
+
+Generates a plain text table summary with minimal host information. Ideal for quick command-line viewing.
+
+```bash
+ansible-cmdb -t txt_table --columns name,os,ip,mem,cpus facts/
+```
+
+**Example output:**
+```
+Name                    OS             IP             Mem  CPUs
+----------------------  -------------  -------------  ---  -  
+jib.electricmonk.nl     Linuxmint 17   192.168.0.3    16g  1  
+app.uat.local           Debian 6.0.10  192.168.57.1   1g   1  
+eek.electricmonk.nl     Ubuntu 14.04   192.168.0.10   3g   1  
+```
+
+<Tip>
+  Use the `--columns` option to control which columns are displayed.
+</Tip>
+
+### json
+
+Dumps all host information including groups, variables, and custom info in JSON format. Useful for programmatic access or integration with other tools.
+
+```bash
+ansible-cmdb -t json -i hosts out/ > cmdb.json
+```
+
+**Use cases:**
+- API integration
+- Custom processing scripts
+- Data analysis
+- Backup/archival
+
+### csv
+
+Outputs host information in CSV (Comma-Separated Values) format. Compatible with spreadsheet applications and data analysis tools.
+
+```bash
+ansible-cmdb -t csv out/ > hosts.csv
+```
+
+**Use cases:**
+- Excel/spreadsheet import
+- Database imports
+- Reporting
+
+### markdown
+
+Generates host documentation in Markdown format. Great for including in documentation systems or version control.
+
+```bash
+ansible-cmdb -t markdown out/ > hosts.md
+```
+
+### sql
+
+Generates SQL statements that can be loaded into SQLite or MySQL databases.
+
+```bash
+ansible-cmdb -t sql -i hosts out/ > cmdb.sql
+```
+
+**Loading into MySQL:**
+
+<CodeGroup>
+```bash Create database
+echo "CREATE DATABASE ansiblecmdb" | mysql
+mysql ansiblecmdb < cmdb.sql
+```
+
+```bash SQLite
+sqlite3 cmdb.db < cmdb.sql
+```
+</CodeGroup>
+
+## Template Parameters
+
+Parameters are passed to templates using the `-p` or `--params` option:
+
+```bash
+ansible-cmdb -p param1=value1,param2=value2 out/ > output.html
+```
+
+<Warning>
+  Parameter syntax:
+  - Use commas to separate parameters (no spaces!)
+  - Format: `key=value`
+  - Boolean values: `0` or `1`
+  - Example: `local_js=1,collapsed=1` ✓
+  - Wrong: `local_js=1, collapsed=1` ✗ (space after comma)
+</Warning>
+
+## Custom Templates
+
+You can create custom templates to build completely different output or enhance existing templates. Ansible-cmdb uses the Mako templating engine.
+
+### Creating a Custom Template
+
+1. **Copy an existing template:**
+
+```bash
+mkdir ~/mytemplate
+cp ~/ansible-cmdb/src/ansiblecmdb/data/tpl/html_fancy.tpl ~/mytemplate/
+cp ~/ansible-cmdb/src/ansiblecmdb/data/tpl/html_fancy_defs.html ~/mytemplate/
+```
+
+2. **Modify the template files** according to your needs.
+
+3. **Render with your custom template:**
+
+<Note>
+  You must be in the same directory as the custom template when rendering.
+</Note>
+
+```bash
+cd ~/mytemplate
+ansible-cmdb -t ./html_fancy.tpl -i ~/ansible/hosts ~/ansible/out/ > cmdb.html
+```
+
+### Template Resources
+
+Templates have access to:
+- `host` - Host fact data
+- `jsonxs()` - Function for safe JSON navigation
+- Various helper functions defined in template files
+
+### Example: Adding Custom Columns
+
+To add a BIOS version column to `html_fancy`:
+
+1. Edit `html_fancy_defs.html` and add to the `cols` array:
+
+```python
+cols = [
+  # ... existing columns ...
+  {"title": "BIOS version", "id": "bios_version", "func": col_bios_version, "sType": "string", "visible": True},
+]
+```
+
+2. Add the column function:
+
+```mako
+<%def name="col_bios_version(host, **kwargs)">
+  ${jsonxs(host, 'ansible_facts.ansible_bios_version', default='')}
+</%def>
+```
+
+<Tip>
+  For simpler column customization, use the `--cust-cols` option instead of modifying templates directly.
+</Tip>
+
+## Template Compatibility
+
+| Feature | html_fancy | html_fancy_split | txt_table | json | csv | markdown | sql |
+|---------|------------|------------------|-----------|------|-----|----------|-----|
+| Columns | ✓ | ✓ | ✓ | - | ✓ | - | - |
+| Custom columns | ✓ | ✓ | - | - | - | - | - |
+| Parameters | ✓ | ✓ | - | - | - | - | - |
+| Exclude columns | ✓ | ✓ | ✓ | - | ✓ | - | - |
+
+## Best Practices
+
+<Tip>
+  - Use `html_fancy` for interactive web-based CMDBs
+  - Use `html_fancy_split` for large infrastructures (100+ hosts)
+  - Use `txt_table` for quick command-line checks
+  - Use `json` for automation and integration
+  - Use `sql` for database-driven reporting systems
+</Tip>

@@ -1,0 +1,284 @@
+---
+title: Extending Facts
+description: Override, extend, and add custom facts to your Ansible hosts
+---
+
+You can specify multiple fact directories to override existing facts, fill in missing information, create manual hosts, or add custom facts that appear in generated output.
+
+## How It Works
+
+When you specify multiple fact directories, ansible-cmdb scans them in order and overlays the facts:
+
+```bash
+ansible-cmdb out/ out_extend/ out_custom/ > overview.html
+```
+
+<Info>
+Facts are merged in the order specified. Later directories override earlier ones.
+</Info>
+
+<Warning>
+Hosts **must** be present in your inventory file (hosts file), or ansible-cmdb will not generate output for them.
+</Warning>
+
+## Fact File Format
+
+Extended fact files use the same JSON structure as Ansible fact files:
+
+<CodeGroup>
+```json Standard Format
+{
+  "ansible_facts": {
+    "ansible_userspace_architecture": "x86_64"
+  }
+}
+```
+
+```json Fact Cache Format (with --fact-cache)
+{
+  "ansible_userspace_architecture": "x86_64"
+}
+```
+</CodeGroup>
+
+<Warning>
+When using `--fact-cache`, omit the `ansible_facts` key and put items in the root of the JSON. You can only extend native Ansible facts, not information from the hosts file.
+</Warning>
+
+## Override and Fill In Facts
+
+Sometimes Ansible doesn't properly gather certain facts. You can manually add missing information:
+
+<Steps>
+  <Step title="Create an extend directory">
+    ```bash
+    mkdir out_extend
+    ```
+  </Step>
+  
+  <Step title="Create a file for the host">
+    The filename must match the hostname as it appears in your hosts file:
+    
+    ```bash
+    vi out_extend/openbsd.dev.local
+    ```
+  </Step>
+  
+  <Step title="Add the missing facts">
+    ```json out_extend/openbsd.dev.local
+    {
+      "ansible_facts": {
+          "ansible_userspace_architecture": "x86_64"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Generate output with both directories">
+    ```bash
+    ansible-cmdb out/ out_extend/ > overview.html
+    ```
+  </Step>
+</Steps>
+
+Your OpenBSD host will now include the 'Userspace Architecture' fact in the generated overview.
+
+## Manual Hosts
+
+Add hosts that Ansible can't reach directly (like Windows machines without Ansible) to your CMDB:
+
+<Steps>
+  <Step title="Create a manual facts directory">
+    ```bash
+    mkdir out_manual
+    ```
+  </Step>
+  
+  <Step title="Create a complete fact file">
+    ```bash
+    vi out_manual/win.dev.local
+    ```
+  </Step>
+  
+  <Step title="Populate with host information">
+    ```json out_manual/win.dev.local
+    {
+      "groups": [],
+      "ansible_facts": {
+        "ansible_all_ipv4_addresses": [
+          "10.10.0.2",
+          "191.37.104.122"
+        ], 
+        "ansible_default_ipv4": {
+          "address": "191.37.104.122"
+        }, 
+        "ansible_devices": {}, 
+        "ansible_distribution": "Windows", 
+        "ansible_distribution_major_version": "2008", 
+        "ansible_distribution_release": "", 
+        "ansible_distribution_version": "2008", 
+        "ansible_domain": "win.dev.local", 
+        "ansible_fips": false, 
+        "ansible_form_factor": "VPS", 
+        "ansible_fqdn": "win.dev.local", 
+        "ansible_hostname": "win", 
+        "ansible_machine": "x86_64", 
+        "ansible_nodename": "win.dev.local", 
+        "ansible_userspace_architecture": "x86_64", 
+        "ansible_userspace_bits": "64", 
+        "ansible_virtualization_role": "guest", 
+        "ansible_virtualization_type": "xen", 
+        "module_setup": true
+      }, 
+      "changed": false
+    }
+    ```
+  </Step>
+  
+  <Step title="Include when generating">
+    ```bash
+    ansible-cmdb out/ out_manual/ > overview.html
+    ```
+  </Step>
+</Steps>
+
+### Minimal Required Facts
+
+For a host to appear properly in the `html_fancy` template, include at minimum:
+
+- `ansible_fqdn` - Fully qualified domain name
+- `ansible_hostname` - Short hostname
+- `ansible_default_ipv4.address` - Primary IP address
+- `ansible_distribution` - OS name
+- `ansible_distribution_version` - OS version
+
+## Custom Facts
+
+Add arbitrary structured data that appears under the "Custom facts" heading in `html_fancy` templates:
+
+<Info>
+Custom facts are different from:
+- **Host variables** - Defined in inventory files
+- **Host local facts** - Ansible reads from `/etc/ansible/facts.d` on each host
+
+Custom facts are manually defined on the host where you run ansible-cmdb.
+</Info>
+
+<Steps>
+  <Step title="Create a custom facts directory">
+    ```bash
+    mkdir out_custom
+    ```
+  </Step>
+  
+  <Step title="Create a file for the host">
+    ```bash
+    vi out_custom/custfact.test.local
+    ```
+  </Step>
+  
+  <Step title="Add custom_facts key with your data">
+    ```json out_custom/custfact.test.local
+    {
+      "custom_facts": {
+        "software": {
+          "apache": {
+            "version": "2.4",
+            "install_src": "backport_deb"
+          },
+          "mysql-server": {
+            "version": "5.5",
+            "install_src": "manual_compile"
+          },
+          "redis": {
+            "version": "3.0.7",
+            "install_src": "manual_compile"
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Generate with custom facts">
+    ```bash
+    ansible-cmdb out/ out_custom/ > overview.html
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+Facts **must** be under the `custom_facts` key to appear in the Custom facts section.
+</Warning>
+
+## Combining Multiple Extensions
+
+You can use all extension types together:
+
+```bash
+ansible-cmdb out/ out_extend/ out_manual/ out_custom/ > overview.html
+```
+
+Each directory is processed in order:
+1. Base facts from `out/`
+2. Overrides and extensions from `out_extend/`
+3. Manual hosts from `out_manual/`
+4. Custom facts from `out_custom/`
+
+## Example: Software Inventory
+
+Combine custom facts with custom columns for a software inventory:
+
+```json out_custom/webserver.prod.local
+{
+  "custom_facts": {
+    "software": {
+      "apache": {
+        "version": "2.4",
+        "install_src": "backport_deb"
+      },
+      "mysql-server": {
+        "version": "5.5",
+        "install_src": "manual_compile"
+      },
+      "redis": {
+        "version": "3.0.7",
+        "install_src": "manual_compile"
+      }
+    }
+  },
+  "ansible_facts": {
+    "ansible_local": {
+      "foo": "bar"
+    }
+  }
+}
+```
+
+The software information appears under "Custom facts" in the host details.
+
+## Fact Cache Compatibility
+
+When using Ansible's fact caching feature:
+
+```bash
+ansible-cmdb -f /path/to/facts/dir > overview.html
+```
+
+Extended fact files must:
+- Omit the `ansible_facts` wrapper key
+- Place all facts at the root level
+- Only extend native Ansible facts (not hosts file data)
+
+```json Example with --fact-cache
+{
+  "ansible_userspace_architecture": "x86_64",
+  "ansible_distribution": "OpenBSD"
+}
+```
+
+## See Also
+
+- [Custom Columns](/advanced/custom-columns) - Display custom data in overview tables
+- [Custom Facts in Templates](/advanced/custom-templates) - Access custom facts in templates
+- [Host Variables](/usage/inventory-scanning) - Using inventory-based variables
