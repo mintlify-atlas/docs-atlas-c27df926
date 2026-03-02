@@ -1,0 +1,74 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Ansible CMDB",
+  "projectDescription": "Generate host overview from Ansible fact gathering output",
+  "theme": "aspen",
+  "primaryColor": "#EE0000",
+  "lightColor": "#FF4444",
+  "darkColor": "#CC0000",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Usage Guide",
+        "pages": [
+          "usage/command-reference",
+          "usage/templates",
+          "usage/inventory-scanning",
+          "usage/fact-caching",
+          "usage/limiting-hosts"
+        ]
+      },
+      {
+        "group": "Advanced Features",
+        "pages": [
+          "advanced/custom-columns",
+          "advanced/extending-facts",
+          "advanced/custom-templates",
+          "advanced/parameters"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/output-formats",
+          "reference/template-list",
+          "reference/column-reference"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "development/contributing",
+          "development/architecture"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multiple output formats (HTML, CSV, JSON, SQL, Markdown)",
+    "Dynamic searchable HTML interface with host details",
+    "Custom columns and fact extension",
+    "Inventory and group variable integration",
+    "Fact caching support",
+    "Custom template system"
+  ],
+  "publicApiSurface": [
+    "ansible-cmdb [options] <dir>",
+    "--template / -t - Select output template",
+    "--inventory / -i - Specify inventory file",
+    "--fact-cache / -f - Use fact-cache format",
+    "--params / -p - Template parameters",
+    "--columns / -c - Select columns to display",
+    "--cust-cols / -C - Custom column definitions",
+    "--limit / -l - Limit hosts to pattern",
+    "--exclude-cols - Exclude specific columns"
+  ]
+}
