@@ -1,0 +1,259 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for ansible-cmdb
+---
+
+# Troubleshooting
+
+This page covers common issues you might encounter when using ansible-cmdb and their solutions.
+
+## HTML Output Issues
+
+<Accordion title="The output HTML file doesn't work on other computers">
+When you transfer the output HTML file of ansible-cmdb and try to open it in the browser on another computer, you'll find that it doesn't work properly.
+
+**Cause**: HTML files opened on a local computer (those that start with a `file://` URL) are not allowed to fetch the required JavaScript files from the internet (URLs that start with `http://` and `https://`). For this reason, ansible-cmdb installs those required files when you install ansible-cmdb. Naturally, another PC won't have those files locally available.
+
+**Solution**: Generate the output with the `-p local_js=0` parameter and host the resulting HTML file(s) on a webserver:
+
+```bash
+ansible-cmdb -p local_js=0 out/ > overview.html
+```
+
+Then serve the HTML file through a webserver like Apache, Nginx, or a simple Python HTTP server:
+
+```bash
+# Simple Python HTTP server
+python3 -m http.server 8000
+# Then access at http://localhost:8000/overview.html
+```
+</Accordion>
+
+<Accordion title="New custom columns don't appear in the HTML output">
+If you've added custom columns with the `-C` option but they don't appear in the browser, or you experience strange behavior:
+
+**Cause**: The browser's localStorage is caching old column configurations.
+
+**Solution**: 
+1. Open the generated HTML in your browser
+2. Click the **Clear settings** button in the top-right corner
+3. Refresh the page
+
+This clears localStorage settings that may be caching old column configurations.
+</Accordion>
+
+## Missing Data
+
+<Accordion title="Solaris machines have no disk information">
+Ansible currently does not include disk size information for Solaris hosts. As such, ansible-cmdb can't include it in the output.
+
+**Workaround**: You can manually add disk information using [fact extension](/advanced/extending-facts):
+
+```json out_extend/solaris-host.example.com
+{
+  "ansible_facts": {
+    "ansible_devices": {
+      "c0t0d0": {
+        "size": "100.00 GB"
+      }
+    }
+  }
+}
+```
+
+Then generate the overview with both directories:
+
+```bash
+ansible-cmdb out/ out_extend/ > overview.html
+```
+</Accordion>
+
+<Accordion title="Some hosts are missing from the output">
+If hosts are missing from the generated output, check the following:
+
+**Common causes**:
+1. Facts weren't gathered for those hosts (they were unreachable)
+2. The hosts are filtered by the `--limit` option
+3. The `skip_empty=1` parameter is excluding hosts without facts
+
+**Solutions**:
+- Check if fact files exist for missing hosts in your output directory
+- Remove the `--limit` option or adjust the pattern
+- Generate without `skip_empty=1` parameter to include all hosts:
+
+```bash
+ansible-cmdb out/ > overview.html
+```
+</Accordion>
+
+## Fact Cache Issues
+
+<Accordion title="Fact cache files not recognized">
+If ansible-cmdb doesn't recognize your fact cache files:
+
+**Cause**: You must specify the `-f` (`--fact-cache`) option when using fact cache format.
+
+**Solution**:
+
+```bash
+ansible-cmdb -f /path/to/fact/cache > overview.html
+```
+
+<Warning>
+The `--fact-cache` option applies to **all** fact directories you specify. You cannot mix fact-cache and regular setup directories.
+</Warning>
+</Accordion>
+
+<Accordion title="Extended facts don't work with fact cache">
+When using the `--fact-cache` option, extended facts must follow a different format.
+
+**Cause**: Fact cache files omit the `ansible_facts` wrapper key.
+
+**Solution**: When extending fact cache files, put items in the root of the JSON:
+
+```json
+{
+  "ansible_userspace_architecture": "x86_64",
+  "custom_field": "value"
+}
+```
+
+Not:
+
+```json
+{
+  "ansible_facts": {
+    "ansible_userspace_architecture": "x86_64"
+  }
+}
+```
+</Accordion>
+
+## Template Issues
+
+<Accordion title="Template not found error">
+If you get an error like "Template 'xyz' not found":
+
+**Causes**:
+1. Template name is misspelled
+2. Custom template path is incorrect
+
+**Solutions**:
+- Check available templates: `html_fancy`, `html_fancy_split`, `txt_table`, `csv`, `json`, `markdown`, `markdown_split`, `sql`
+- For custom templates, use absolute or relative paths:
+
+```bash
+ansible-cmdb -t ./my_template.tpl out/ > output.html
+```
+
+- When using custom templates, you must be in the same directory as the template file
+</Accordion>
+
+<Accordion title="KeyError when rendering template">
+If you get a KeyError during template rendering:
+
+**Cause**: The template is trying to access a fact that doesn't exist on all hosts.
+
+**Solution**: If this happens with a built-in template, use the `-d` flag to see which host is causing the issue:
+
+```bash
+ansible-cmdb -d out/ > overview.html
+```
+
+Then either:
+1. Fix the missing fact by extending the host's facts
+2. Report the issue on the GitHub issue tracker
+
+For custom templates, always use safe data access with `.get()` or `jsonxs()` - see [Custom Templates](/advanced/custom-templates).
+</Accordion>
+
+## Inventory Issues
+
+<Accordion title="Host variables not appearing in output">
+If host variables from your inventory aren't showing up:
+
+**Cause**: The `-i` option wasn't specified.
+
+**Solution**: Always specify your inventory with the `-i` option:
+
+```bash
+ansible-cmdb -i ./hosts out/ > overview.html
+```
+
+The `-i` option is required for ansible-cmdb to read:
+- Host groups
+- Host variables
+- Group variables from `group_vars/` and `host_vars/`
+</Accordion>
+
+<Accordion title="Dynamic inventory not working">
+If your dynamic inventory script isn't working:
+
+**Requirements**:
+1. The script must be executable (`chmod +x script.py`)
+2. The script must output valid JSON
+3. Specify the script path with `-i`:
+
+```bash
+ansible-cmdb -i ./dynamic_inventory.py out/ > overview.html
+```
+
+**Debugging**: Run the script manually to verify its output:
+
+```bash
+./dynamic_inventory.py --list
+```
+</Accordion>
+
+## Column Issues
+
+<Accordion title="Column filtering not working">
+If the `--columns` or `--exclude-cols` options don't work:
+
+**Cause**: Not all templates support column filtering.
+
+**Supported templates**:
+- `html_fancy`
+- `html_fancy_split`
+- `txt_table`
+
+**Solution**: Use a supported template:
+
+```bash
+ansible-cmdb -t html_fancy -c name,os,ip,mem out/ > overview.html
+```
+</Accordion>
+
+## Performance Issues
+
+<Accordion title="HTML generation is very slow with many hosts">
+For large inventories (100+ hosts), the `html_fancy` template can be slow.
+
+**Solution**: Use the `html_fancy_split` template, which generates separate files for each host:
+
+```bash
+ansible-cmdb -t html_fancy_split -i hosts out/
+```
+
+This creates a `cmdb/` directory with an index and separate detail pages for each host.
+</Accordion>
+
+## Getting Help
+
+If you encounter an issue not covered here:
+
+1. **Check the full documentation**: Review relevant pages in the [Usage Guide](/usage/command-reference) and [Advanced Features](/advanced/custom-columns) sections
+2. **Run with debug output**: Use the `-d` flag to see detailed information:
+   ```bash
+   ansible-cmdb -d out/ > overview.html 2> debug.log
+   ```
+3. **Search existing issues**: Check the [GitHub issues](https://github.com/fboender/ansible-cmdb/issues) for similar problems
+4. **Report a bug**: If you've found a bug, [create an issue](https://github.com/fboender/ansible-cmdb/issues/new) with:
+   - ansible-cmdb version (`ansible-cmdb --version`)
+   - Command you ran
+   - Debug output (`-d` flag)
+   - Sample fact file (if possible and not confidential)
+
+<Note>
+When reporting issues with confidential data, you can send fact files directly to ferry.boender@gmail.com instead of posting them publicly.
+</Note>
